@@ -11,22 +11,69 @@
   --font-sans: "Pretendard Variable", var(--font-geist-sans), sans-serif;
   --font-mono: var(--font-geist-mono);
 
-  /* Figma design tokens (Design V2) */
-  --color-primary-500: #5cb8ff;
+  /* Atomic palette (Figma Design V2 — node 24:2) */
+  --color-primary-50: #f5fbff;
+  --color-primary-100: #eff8ff;
+  --color-primary-200: #e0f3ff;
+  --color-primary-300: #cce9ff;
   --color-primary-400: #a8dbff;
-  --color-gray-900: #354150;
-  --color-gray-100: #f0f3f7;
-}
+  --color-primary-500: #5cb8ff;
+  --color-primary-600: #49a7f2;
+  --color-primary-700: #358fd9;
+  --color-primary-800: #2873b3;
+  --color-primary-900: #1e5a8c;
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --color-gray-50: #f6f8fb;
+  --color-gray-100: #f0f3f7;
+  --color-gray-200: #e3e9ef;
+  --color-gray-300: #d2d9e2;
+  --color-gray-400: #b8c1cc;
+  --color-gray-500: #94a0ad;
+  --color-gray-600: #7c8b9c;
+  --color-gray-700: #637488;
+  --color-gray-800: #4d5d6f;
+  --color-gray-900: #354150;
+
+  --color-green-50: #f6fbf8;
+  --color-green-100: #eef9f3;
+  --color-green-200: #e0f2e8;
+  --color-green-300: #cbe9d8;
+  --color-green-400: #a9dabf;
+  --color-green-500: #76cb9b;
+  --color-green-600: #5cbc86;
+  --color-green-700: #46a46f;
+  --color-green-800: #3a825a;
+  --color-green-900: #2a5a3f;
+
+  --color-yellow-50: #fefbf3;
+  --color-yellow-100: #fef8e9;
+  --color-yellow-200: #fcf1d7;
+  --color-yellow-300: #f8e6bc;
+  --color-yellow-400: #f3d591;
+  --color-yellow-500: #eec053;
+  --color-yellow-600: #e6b033;
+  --color-yellow-700: #ca9721;
+  --color-yellow-800: #997624;
+  --color-yellow-900: #635021;
+
+  --color-red-50: #fef3f4;
+  --color-red-100: #fdeaec;
+  --color-red-200: #fad8db;
+  --color-red-300: #f6bec3;
+  --color-red-400: #f0949c;
+  --color-red-500: #ec5562;
+  --color-red-600: #e33544;
+  --color-red-700: #c72331;
+  --color-red-800: #99242e;
+  --color-red-900: #652026;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans);
+}
+
+button:not(:disabled) {
+  cursor: pointer;
 }

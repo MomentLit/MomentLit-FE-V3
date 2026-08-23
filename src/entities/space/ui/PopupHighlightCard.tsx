@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { Bookmark } from "lucide-react";
 import type { Space } from "../model";
 
@@ -13,11 +14,17 @@ export function PopupHighlightCard({
   onToggleBookmark,
 }: PopupHighlightCardProps) {
   return (
-    <div className="group relative aspect-[4/5] w-full overflow-hidden rounded-xl bg-gray-100">
+    <Link
+      href={`/popups/${space.id}`}
+      className="group relative aspect-[4/5] w-full overflow-hidden rounded-xl bg-gray-100"
+    >
       <button
         type="button"
         aria-label={space.bookmarked ? "관심 공간 해제" : "관심 공간 등록"}
-        onClick={() => onToggleBookmark?.(space.id)}
+        onClick={(event) => {
+          event.preventDefault();
+          onToggleBookmark?.(space.id);
+        }}
         className="absolute top-4 right-4 z-10"
       >
         <Bookmark
@@ -38,6 +45,6 @@ export function PopupHighlightCard({
           {space.address}
         </p>
       </div>
-    </div>
+    </Link>
   );
 }

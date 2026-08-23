@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import {
   Home,
   Search,
@@ -66,13 +67,16 @@ export function Sidebar() {
         </nav>
       </div>
 
-      <div className="flex items-center justify-between">
+      <Link
+        href="/mypage"
+        className="flex items-center justify-between rounded-lg p-1 hover:bg-gray-100"
+      >
         <div className="flex items-center gap-2">
           <div className="size-12 shrink-0 rounded-full bg-gray-300" />
           <p className="text-base text-black">권길현</p>
         </div>
         <ChevronsUpDown size={18} className="shrink-0 text-gray-900" />
-      </div>
+      </Link>
     </aside>
   );
 }

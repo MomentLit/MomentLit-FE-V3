@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { Bookmark } from "lucide-react";
 import type { Space } from "../model";
 
@@ -10,12 +11,15 @@ interface SpaceCardProps {
 
 export function SpaceCard({ space, onToggleBookmark }: SpaceCardProps) {
   return (
-    <div className="flex w-full flex-col gap-1">
+    <Link href={`/spaces/${space.id}`} className="flex w-full flex-col gap-1">
       <div className="relative flex aspect-[3/2] w-full items-start justify-end overflow-hidden rounded-xl bg-gray-100 p-4">
         <button
           type="button"
           aria-label={space.bookmarked ? "관심 공간 해제" : "관심 공간 등록"}
-          onClick={() => onToggleBookmark?.(space.id)}
+          onClick={(event) => {
+            event.preventDefault();
+            onToggleBookmark?.(space.id);
+          }}
         >
           <Bookmark
             size={24}
@@ -35,6 +39,6 @@ export function SpaceCard({ space, onToggleBookmark }: SpaceCardProps) {
           {space.address}
         </p>
       </div>
-    </div>
+    </Link>
   );
 }

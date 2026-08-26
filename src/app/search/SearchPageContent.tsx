@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useRouter, useSearchParams } from "next/navigation";
 import { SearchInput } from "@/shared/ui";
 import {
@@ -8,67 +9,9 @@ import {
   type SearchCategoryFilterValue,
 } from "@/features/search-category-filter";
 import { ListingSection } from "@/widgets/listing-section";
-import { SpaceCard, PopupHighlightCard, type Space } from "@/entities/space";
-
-// TODO: replace with real search API results once the backend endpoint is ready.
-const MOCK_RESULTS: Space[] = [
-  {
-    id: "result-1",
-    name: "산리오 캐릭터즈 팝업",
-    address: "부산 수영구",
-    category: "POPUP_STORE",
-    bookmarked: false,
-  },
-  {
-    id: "result-2",
-    name: "산리오 굿즈샵 팝업",
-    address: "부산 해운대구",
-    category: "POPUP_STORE",
-    bookmarked: true,
-  },
-  {
-    id: "result-3",
-    name: "부산 소프트웨어 마이스터 고등학교",
-    address: "부산 강서구",
-    category: "CLASSROOM",
-    bookmarked: false,
-  },
-  {
-    id: "result-4",
-    name: "부산 소프트웨어 마이스터 고등학교",
-    address: "부산 강서구",
-    category: "MEETING_ROOM",
-    bookmarked: false,
-  },
-  {
-    id: "result-5",
-    name: "부산 소프트웨어 마이스터 고등학교",
-    address: "부산 강서구",
-    category: "PRACTICE_ROOM",
-    bookmarked: true,
-  },
-  {
-    id: "result-6",
-    name: "부산 소프트웨어 마이스터 고등학교",
-    address: "부산 강서구",
-    category: "STUDIO",
-    bookmarked: false,
-  },
-  {
-    id: "result-7",
-    name: "부산 소프트웨어 마이스터 고등학교",
-    address: "부산 강서구",
-    category: "PARTY_ROOM",
-    bookmarked: false,
-  },
-  {
-    id: "result-8",
-    name: "부산 소프트웨어 마이스터 고등학교",
-    address: "부산 강서구",
-    category: "OFFICE",
-    bookmarked: false,
-  },
-];
+import { SpaceCard, PopupHighlightCard } from "@/entities/space";
+import { getSpaces } from "@/entities/space/api";
+import { getPopups } from "@/entities/popup/api";
 
 export function SearchPageContent() {
   const router = useRouter();
@@ -82,21 +25,29 @@ export function SearchPageContent() {
     type: searchParams.get("type") === "POPUP" ? "POPUP" : "SPACE",
     category: null,
   });
-  const [results, setResults] = useState(MOCK_RESULTS);
 
-  const filteredResults = results.filter((item) => {
-    if (filter.type === "POPUP") return item.category === "POPUP_STORE";
-    if (filter.category) return item.category === filter.category;
-    return item.category !== "POPUP_STORE";
+  const spacesQuery = useQuery({
+    queryKey: ["spaces", "search", submittedQuery, filter.category],
+    queryFn: () =>
+      getSpaces({
+        name: submittedQuery || undefined,
+        category: filter.category,
+      }),
+    enabled: filter.type === "SPACE",
   });
 
-  const handleToggleBookmark = (id: string) => {
-    setResults((prev) =>
-      prev.map((item) =>
-        item.id === id ? { ...item, bookmarked: !item.bookmarked } : item,
-      ),
-    );
-  };
+  const popupsQuery = useQuery({
+    queryKey: ["popups"],
+    queryFn: getPopups,
+    enabled: filter.type === "POPUP",
+  });
+
+  const isLoading =
+    filter.type === "SPACE" ? spacesQuery.isLoading : popupsQuery.isLoading;
+  const isError =
+    filter.type === "SPACE" ? spacesQuery.isError : popupsQuery.isError;
+  const results =
+    filter.type === "SPACE" ? spacesQuery.data ?? [] : popupsQuery.data ?? [];
 
   const handleSubmit = (value: string) => {
     setSubmittedQuery(value);
@@ -122,18 +73,21 @@ export function SearchPageContent() {
       <ListingSection
         title={filter.type === "POPUP" ? "팝업 검색 결과" : "공간 검색 결과"}
       >
-        {filteredResults.map((item) =>
+        {isLoading && <p className="text-sm text-gray-600">불러오는 중입니다.</p>}
+        {isError && <p className="text-sm text-red-700">검색 결과를 불러오지 못했습니다.</p>}
+        {!isLoading && results.length === 0 && (
+          <p className="text-sm text-gray-600">검색 결과가 없습니다.</p>
+        )}
+        {results.map((item) =>
           filter.type === "POPUP" ? (
             <PopupHighlightCard
               key={item.id}
               space={item}
-              onToggleBookmark={handleToggleBookmark}
             />
           ) : (
             <SpaceCard
               key={item.id}
               space={item}
-              onToggleBookmark={handleToggleBookmark}
             />
           ),
         )}

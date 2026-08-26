@@ -1,35 +1,24 @@
 "use client";
 
-import { useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { StatCard } from "@/shared/ui";
 import { MatchRequestTable } from "@/widgets/mypage";
-import type { MatchRequest } from "@/entities/match-request";
-
-// TODO: replace with the user's real match requests once the backend
-// endpoint is ready.
-const MOCK_REQUESTS: MatchRequest[] = [
-  {
-    id: "match-1",
-    popupName: "팝업 1",
-    applicantName: "김철수",
-    hostSpaceName: "성수 더 현대",
-    requestedDate: "6.18",
-  },
-  {
-    id: "match-2",
-    popupName: "팝업 2",
-    applicantName: "김철수",
-    hostSpaceName: "성수 더 현대",
-    requestedDate: "6.18",
-  },
-];
+import { cancelMatching, getSentMatchRequests } from "@/entities/match-request";
 
 export default function MyMatchesPage() {
-  const [requests, setRequests] = useState(MOCK_REQUESTS);
+  const queryClient = useQueryClient();
+  const requestsQuery = useQuery({
+    queryKey: ["matchings", "me", "requests"],
+    queryFn: getSentMatchRequests,
+  });
+  const cancelMutation = useMutation({
+    mutationFn: cancelMatching,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["matchings", "me", "requests"] });
+    },
+  });
 
-  const removeRequest = (id: string) => {
-    setRequests((prev) => prev.filter((request) => request.id !== id));
-  };
+  const requests = requestsQuery.data ?? [];
 
   return (
     <div className="flex flex-col gap-6">
@@ -38,15 +27,17 @@ export default function MyMatchesPage() {
       </h1>
 
       <div className="grid grid-cols-3 gap-4">
-        <StatCard label="받은 요청" value={8} />
-        <StatCard label="검토 대기" value={7} />
-        <StatCard label="확정 매칭" value={12} />
+        <StatCard label="받은 요청" value={requests.length} />
+        <StatCard label="검토 대기" value={requests.length} />
+        <StatCard label="확정 매칭" value={0} />
       </div>
 
+      {requestsQuery.isLoading && <p className="text-sm text-gray-600">불러오는 중입니다.</p>}
+      {requestsQuery.isError && <p className="text-sm text-red-700">매칭 요청을 불러오지 못했습니다.</p>}
       <MatchRequestTable
         requests={requests}
-        onAccept={removeRequest}
-        onReject={removeRequest}
+        onAccept={(id) => cancelMutation.mutate(id)}
+        onReject={(id) => cancelMutation.mutate(id)}
       />
     </div>
   );

@@ -1,8 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { getMyProfile } from "@/entities/user";
 import { LogoutModal } from "./LogoutModal";
 
 const MENU_ITEMS = [
@@ -15,6 +17,11 @@ const MENU_ITEMS = [
 export function MyPagePanel() {
   const pathname = usePathname();
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
+  const profileQuery = useQuery({
+    queryKey: ["users", "me"],
+    queryFn: getMyProfile,
+  });
+  const profile = profileQuery.data;
 
   return (
     <>
@@ -24,8 +31,10 @@ export function MyPagePanel() {
         <div className="flex items-center gap-4 py-7">
           <div className="size-14 shrink-0 rounded-full bg-gray-300" />
           <div className="flex min-w-0 flex-1 flex-col gap-1">
-            <p className="text-xl font-semibold text-gray-900">권길현</p>
-            <p className="text-sm text-gray-600">게스트</p>
+            <p className="text-xl font-semibold text-gray-900">
+              {profile?.name ?? "사용자"}
+            </p>
+            <p className="text-sm text-gray-600">{profile?.role ?? "게스트"}</p>
           </div>
         </div>
 

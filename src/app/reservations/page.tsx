@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import type { Reservation } from "@/entities/reservation";
+import { useQuery } from "@tanstack/react-query";
+import { getMyReservations } from "@/entities/reservation";
 import { StatCard } from "@/shared/ui";
 import {
   ReservationTabs,
@@ -9,104 +10,25 @@ import {
   type ReservationFilter,
 } from "@/widgets/reservations";
 
-// TODO: replace with real reservation data once the backend endpoint is ready.
-const MOCK_RESERVATIONS: Reservation[] = [
-  {
-    id: "res-1",
-    spaceName: "언더스튜디오",
-    location: "서울 성동구 성수동",
-    requestedStart: "2026.08.20",
-    requestedEnd: "2026.08.22",
-    timeStart: "10:00",
-    timeEnd: "20:00",
-    status: "APPROVED",
-  },
-  {
-    id: "res-2",
-    spaceName: "언더스튜디오",
-    location: "서울 성동구 성수동",
-    requestedStart: "2026.08.20",
-    requestedEnd: "2026.08.22",
-    timeStart: "10:00",
-    timeEnd: "20:00",
-    status: "APPROVED",
-  },
-  {
-    id: "res-3",
-    spaceName: "언더스튜디오",
-    location: "서울 성동구 성수동",
-    requestedStart: "2026.08.20",
-    requestedEnd: "2026.08.22",
-    timeStart: "10:00",
-    timeEnd: "20:00",
-    status: "REJECTED",
-  },
-  {
-    id: "res-4",
-    spaceName: "언더스튜디오",
-    location: "서울 성동구 성수동",
-    requestedStart: "2026.08.20",
-    requestedEnd: "2026.08.22",
-    timeStart: "10:00",
-    timeEnd: "20:00",
-    status: "PENDING",
-  },
-  {
-    id: "res-5",
-    spaceName: "언더스튜디오",
-    location: "서울 성동구 성수동",
-    requestedStart: "2026.08.20",
-    requestedEnd: "2026.08.22",
-    timeStart: "10:00",
-    timeEnd: "20:00",
-    status: "PENDING",
-  },
-  {
-    id: "res-6",
-    spaceName: "언더스튜디오",
-    location: "서울 성동구 성수동",
-    requestedStart: "2026.08.20",
-    requestedEnd: "2026.08.22",
-    timeStart: "10:00",
-    timeEnd: "20:00",
-    status: "PENDING",
-  },
-  {
-    id: "res-7",
-    spaceName: "언더스튜디오",
-    location: "서울 성동구 성수동",
-    requestedStart: "2026.08.20",
-    requestedEnd: "2026.08.22",
-    timeStart: "10:00",
-    timeEnd: "20:00",
-    status: "PENDING",
-  },
-  {
-    id: "res-8",
-    spaceName: "언더스튜디오",
-    location: "서울 성동구 성수동",
-    requestedStart: "2026.08.20",
-    requestedEnd: "2026.08.22",
-    timeStart: "10:00",
-    timeEnd: "20:00",
-    status: "PENDING",
-  },
-];
-
 export default function ReservationsPage() {
   const [filter, setFilter] = useState<ReservationFilter>("ALL");
+  const reservationsQuery = useQuery({
+    queryKey: ["matchings", "me"],
+    queryFn: getMyReservations,
+  });
+  const reservations = reservationsQuery.data ?? [];
 
   const counts: Record<ReservationFilter, number> = {
-    ALL: MOCK_RESERVATIONS.length,
-    PENDING: MOCK_RESERVATIONS.filter((r) => r.status === "PENDING").length,
-    APPROVED: MOCK_RESERVATIONS.filter((r) => r.status === "APPROVED").length,
-    REJECTED: MOCK_RESERVATIONS.filter((r) => r.status === "REJECTED").length,
+    ALL: reservations.length,
+    PENDING: reservations.filter((r) => r.status === "PENDING").length,
+    APPROVED: reservations.filter((r) => r.status === "APPROVED").length,
+    REJECTED: reservations.filter((r) => r.status === "REJECTED").length,
   };
 
   const filteredReservations =
     filter === "ALL"
-      ? MOCK_RESERVATIONS
-      : MOCK_RESERVATIONS.filter((r) => r.status === filter);
+      ? reservations
+      : reservations.filter((r) => r.status === filter);
 
   return (
     <div className="flex flex-col gap-6 p-10">
@@ -123,6 +45,12 @@ export default function ReservationsPage() {
 
       <ReservationTabs value={filter} onChange={setFilter} counts={counts} />
 
+      {reservationsQuery.isLoading && (
+        <p className="text-sm text-gray-600">불러오는 중입니다.</p>
+      )}
+      {reservationsQuery.isError && (
+        <p className="text-sm text-red-700">예약 목록을 불러오지 못했습니다.</p>
+      )}
       <ReservationTable reservations={filteredReservations} />
     </div>
   );

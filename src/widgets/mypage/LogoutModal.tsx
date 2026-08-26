@@ -1,7 +1,9 @@
 "use client";
 
+import { useMutation } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { LogOut } from "lucide-react";
+import { signOut } from "@/entities/auth";
 
 interface LogoutModalProps {
   onClose: () => void;
@@ -10,10 +12,16 @@ interface LogoutModalProps {
 export function LogoutModal({ onClose }: LogoutModalProps) {
   const router = useRouter();
 
+  const signOutMutation = useMutation({
+    mutationFn: signOut,
+    onSuccess: () => {
+      onClose();
+      router.push("/");
+    },
+  });
+
   const handleLogout = () => {
-    // TODO: call the real logout endpoint once auth exists.
-    onClose();
-    router.push("/");
+    signOutMutation.mutate();
   };
 
   return (
@@ -45,9 +53,10 @@ export function LogoutModal({ onClose }: LogoutModalProps) {
           <button
             type="button"
             onClick={handleLogout}
-            className="flex-1 rounded-xl bg-primary-500 py-3.5 text-base text-white"
+            disabled={signOutMutation.isPending}
+            className="flex-1 rounded-xl bg-primary-500 py-3.5 text-base text-white disabled:bg-gray-300"
           >
-            로그아웃
+            {signOutMutation.isPending ? "로그아웃 중" : "로그아웃"}
           </button>
         </div>
       </div>

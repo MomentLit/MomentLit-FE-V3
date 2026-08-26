@@ -1,93 +1,32 @@
 "use client";
 
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { SearchInput } from "@/shared/ui";
 import { ListingSection } from "@/widgets/listing-section";
-import { SpaceCard, PopupHighlightCard, type Space } from "@/entities/space";
-
-// TODO: replace with real API data once the backend endpoint is ready.
-const MOCK_POPUPS: Space[] = [
-  {
-    id: "popup-1",
-    name: "5등분의 신부 팝업",
-    address: "부산 강서구",
-    category: "POPUP_STORE",
-    bookmarked: false,
-  },
-  {
-    id: "popup-2",
-    name: "짱구는 못말려 팝업",
-    address: "부산 해운대구",
-    category: "POPUP_STORE",
-    bookmarked: true,
-  },
-  {
-    id: "popup-3",
-    name: "산리오 캐릭터즈 팝업",
-    address: "부산 수영구",
-    category: "POPUP_STORE",
-    bookmarked: false,
-  },
-  {
-    id: "popup-4",
-    name: "무민 팝업스토어",
-    address: "부산 남구",
-    category: "POPUP_STORE",
-    bookmarked: false,
-  },
-];
-
-const MOCK_SPACES: Space[] = [
-  {
-    id: "space-1",
-    name: "부산 소프트웨어 마이스터 고등학교",
-    address: "부산 강서구",
-    category: "CLASSROOM",
-    bookmarked: false,
-  },
-  {
-    id: "space-2",
-    name: "부산 소프트웨어 마이스터 고등학교",
-    address: "부산 강서구",
-    category: "MEETING_ROOM",
-    bookmarked: false,
-  },
-  {
-    id: "space-3",
-    name: "부산 소프트웨어 마이스터 고등학교",
-    address: "부산 강서구",
-    category: "PRACTICE_ROOM",
-    bookmarked: true,
-  },
-  {
-    id: "space-4",
-    name: "부산 소프트웨어 마이스터 고등학교",
-    address: "부산 강서구",
-    category: "STUDIO",
-    bookmarked: false,
-  },
-];
+import { SpaceCard, PopupHighlightCard } from "@/entities/space";
+import { getSpaces } from "@/entities/space/api";
+import { getPopupRecommendations } from "@/entities/popup/api";
 
 export default function Home() {
   const router = useRouter();
   const [query, setQuery] = useState("");
-  const [popups, setPopups] = useState(MOCK_POPUPS);
-  const [spaces, setSpaces] = useState(MOCK_SPACES);
+
+  const popupsQuery = useQuery({
+    queryKey: ["popups", "recommendations"],
+    queryFn: getPopupRecommendations,
+  });
+  const spacesQuery = useQuery({
+    queryKey: ["spaces"],
+    queryFn: () => getSpaces(),
+  });
+
+  const popups = popupsQuery.data ?? [];
+  const spaces = spacesQuery.data ?? [];
 
   const handleSearchSubmit = (value: string) => {
     router.push(`/search?q=${encodeURIComponent(value)}`);
-  };
-
-  const toggleBookmark = (
-    setter: typeof setPopups,
-    id: string,
-  ) => {
-    setter((prev) =>
-      prev.map((item) =>
-        item.id === id ? { ...item, bookmarked: !item.bookmarked } : item,
-      ),
-    );
   };
 
   return (
@@ -105,21 +44,29 @@ export default function Home() {
       </div>
 
       <ListingSection title="최근에 등록된 팝업" href="/search?type=POPUP">
+        {popupsQuery.isLoading && <p className="text-sm text-gray-600">불러오는 중입니다.</p>}
+        {popupsQuery.isError && <p className="text-sm text-red-700">팝업을 불러오지 못했습니다.</p>}
+        {!popupsQuery.isLoading && popups.length === 0 && (
+          <p className="text-sm text-gray-600">등록된 팝업이 없습니다.</p>
+        )}
         {popups.map((popup) => (
           <PopupHighlightCard
             key={popup.id}
             space={popup}
-            onToggleBookmark={(id) => toggleBookmark(setPopups, id)}
           />
         ))}
       </ListingSection>
 
       <ListingSection title="최근에 등록된 공간" href="/search?type=SPACE">
+        {spacesQuery.isLoading && <p className="text-sm text-gray-600">불러오는 중입니다.</p>}
+        {spacesQuery.isError && <p className="text-sm text-red-700">공간을 불러오지 못했습니다.</p>}
+        {!spacesQuery.isLoading && spaces.length === 0 && (
+          <p className="text-sm text-gray-600">등록된 공간이 없습니다.</p>
+        )}
         {spaces.map((space) => (
           <SpaceCard
             key={space.id}
             space={space}
-            onToggleBookmark={(id) => toggleBookmark(setSpaces, id)}
           />
         ))}
       </ListingSection>

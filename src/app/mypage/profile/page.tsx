@@ -1,33 +1,55 @@
 "use client";
 
 import { useRef, useState, type ChangeEvent } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Camera } from "lucide-react";
-import type { UserProfileUpdate } from "@/entities/user";
-
-// TODO: load the current user and PATCH /users/me with this shape once the
-// backend endpoint is ready.
-const INITIAL_PROFILE: UserProfileUpdate = {
-  name: "권길현",
-  image_url: null,
-  phone: null,
-  intro: null,
-};
+import {
+  getMyProfile,
+  updateMyProfile,
+  type UserProfileUpdate,
+} from "@/entities/user";
+import { uploadImage } from "@/entities/image";
 
 export default function ProfileEditPage() {
-  const [profile, setProfile] = useState<UserProfileUpdate>(INITIAL_PROFILE);
+  const queryClient = useQueryClient();
+  const profileQuery = useQuery({
+    queryKey: ["users", "me"],
+    queryFn: getMyProfile,
+  });
+  const [profile, setProfile] = useState<Partial<UserProfileUpdate>>({});
   const [isSaved, setIsSaved] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const currentProfile = { ...profileQuery.data, ...profile };
+
+  const updateProfileMutation = useMutation({
+    mutationFn: updateMyProfile,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["users", "me"] });
+      setIsSaved(true);
+      setTimeout(() => setIsSaved(false), 2000);
+    },
+  });
+  const uploadImageMutation = useMutation({
+    mutationFn: uploadImage,
+    onSuccess: (imageUrl) => {
+      setProfile((prev) => ({ ...prev, image_url: imageUrl }));
+    },
+  });
 
   const handleImageChange = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
-    setProfile((prev) => ({ ...prev, image_url: URL.createObjectURL(file) }));
+    uploadImageMutation.mutate(file);
   };
 
   const handleSave = () => {
-    // TODO: PATCH /users/me with { name, image_url, phone, intro }.
-    setIsSaved(true);
-    setTimeout(() => setIsSaved(false), 2000);
+    updateProfileMutation.mutate({
+      name: currentProfile.name ?? null,
+      image_url: currentProfile.image_url ?? null,
+      phone: currentProfile.phone ?? null,
+      intro: currentProfile.intro ?? null,
+    });
   };
 
   return (
@@ -37,13 +59,22 @@ export default function ProfileEditPage() {
       </h1>
 
       <div className="flex w-full max-w-[520px] flex-col gap-8 rounded-2xl border border-gray-200 p-8">
+        {profileQuery.isLoading && (
+          <p className="text-sm text-gray-600">불러오는 중입니다.</p>
+        )}
+        {profileQuery.isError && (
+          <p className="text-sm text-red-700">프로필을 불러오지 못했습니다.</p>
+        )}
+        {uploadImageMutation.isError && (
+          <p className="text-sm text-red-700">이미지 업로드에 실패했습니다.</p>
+        )}
         <div className="flex flex-col items-center gap-3">
           <div className="relative size-24">
             <div className="size-24 overflow-hidden rounded-full bg-gray-300">
-              {profile.image_url && (
+              {currentProfile.image_url && (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
-                  src={profile.image_url}
+                  src={currentProfile.image_url}
                   alt="프로필 이미지"
                   className="size-full object-cover"
                 />
@@ -72,7 +103,7 @@ export default function ProfileEditPage() {
             <span className="text-sm font-medium text-gray-900">이름</span>
             <input
               type="text"
-              value={profile.name ?? ""}
+              value={currentProfile.name ?? ""}
               onChange={(event) =>
                 setProfile((prev) => ({ ...prev, name: event.target.value }))
               }
@@ -87,7 +118,7 @@ export default function ProfileEditPage() {
             </span>
             <input
               type="tel"
-              value={profile.phone ?? ""}
+              value={currentProfile.phone ?? ""}
               onChange={(event) =>
                 setProfile((prev) => ({ ...prev, phone: event.target.value }))
               }
@@ -99,7 +130,7 @@ export default function ProfileEditPage() {
           <label className="flex flex-col gap-2">
             <span className="text-sm font-medium text-gray-900">소개</span>
             <textarea
-              value={profile.intro ?? ""}
+              value={currentProfile.intro ?? ""}
               onChange={(event) =>
                 setProfile((prev) => ({ ...prev, intro: event.target.value }))
               }
@@ -113,9 +144,14 @@ export default function ProfileEditPage() {
         <button
           type="button"
           onClick={handleSave}
-          className="w-full rounded-xl bg-primary-500 py-3.5 text-base text-white"
+          disabled={updateProfileMutation.isPending}
+          className="w-full rounded-xl bg-primary-500 py-3.5 text-base text-white disabled:bg-gray-300"
         >
-          {isSaved ? "저장됐어요" : "저장하기"}
+          {updateProfileMutation.isPending
+            ? "저장 중"
+            : isSaved
+              ? "저장됐어요"
+              : "저장하기"}
         </button>
       </div>
     </div>

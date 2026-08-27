@@ -1,7 +1,9 @@
 "use client";
 
+import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { useQuery } from "@tanstack/react-query";
 import {
   Home,
   Search,
@@ -11,6 +13,9 @@ import {
   Inbox,
   ChevronsUpDown,
 } from "lucide-react";
+import { useAuthStore } from "@/entities/auth";
+import { getMyProfile } from "@/entities/user";
+import { AuthModal } from "@/widgets/auth";
 import { SidebarNavItem } from "./SidebarNavItem";
 
 const iconProps = { size: 18, className: "shrink-0 text-gray-900" };
@@ -41,6 +46,15 @@ const NAV_SECTIONS = [
 ];
 
 export function Sidebar() {
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+
+  const profileQuery = useQuery({
+    queryKey: ["users", "me"],
+    queryFn: getMyProfile,
+    enabled: isAuthenticated,
+  });
+
   return (
     <aside className="sticky top-0 flex h-screen w-[298px] shrink-0 flex-col justify-between bg-white px-5 pt-10 pb-[30px] shadow-[4px_4px_4px_0px_rgba(204,204,204,0.25)]">
       <div className="flex flex-col gap-4">
@@ -67,16 +81,41 @@ export function Sidebar() {
         </nav>
       </div>
 
-      <Link
-        href="/mypage"
-        className="flex items-center justify-between rounded-lg p-1 hover:bg-gray-100"
-      >
-        <div className="flex items-center gap-2">
-          <div className="size-12 shrink-0 rounded-full bg-gray-300" />
-          <p className="text-base text-black">권길현</p>
-        </div>
-        <ChevronsUpDown size={18} className="shrink-0 text-gray-900" />
-      </Link>
+      {isAuthenticated ? (
+        <Link
+          href="/mypage"
+          className="flex items-center justify-between rounded-lg p-1 hover:bg-gray-100"
+        >
+          <div className="flex items-center gap-2">
+            <div className="size-12 shrink-0 overflow-hidden rounded-full bg-gray-300">
+              {profileQuery.data?.image_url && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={profileQuery.data.image_url}
+                  alt=""
+                  className="size-full object-cover"
+                />
+              )}
+            </div>
+            <p className="text-base text-black">
+              {profileQuery.data?.name ?? "사용자"}
+            </p>
+          </div>
+          <ChevronsUpDown size={18} className="shrink-0 text-gray-900" />
+        </Link>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setIsAuthModalOpen(true)}
+          className="flex h-12 w-full items-center justify-center rounded-xl bg-primary-500 text-lg font-medium text-white"
+        >
+          로그인
+        </button>
+      )}
+
+      {isAuthModalOpen && (
+        <AuthModal onClose={() => setIsAuthModalOpen(false)} />
+      )}
     </aside>
   );
 }

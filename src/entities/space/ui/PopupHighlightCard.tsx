@@ -16,7 +16,12 @@ export function PopupHighlightCard({
   return (
     <Link
       href={`/popups/${space.id}`}
-      className="group relative aspect-[4/5] w-full overflow-hidden rounded-xl bg-gray-100"
+      className="group relative aspect-[4/5] w-full overflow-hidden rounded-xl bg-gray-100 bg-cover bg-center"
+      style={
+        space.thumbnailUrl
+          ? { backgroundImage: `url(${space.thumbnailUrl})` }
+          : undefined
+      }
     >
       <button
         type="button"

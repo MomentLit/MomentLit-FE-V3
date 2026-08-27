@@ -11,6 +11,17 @@ interface MatchingDto {
   created_at: string;
 }
 
+export interface MatchingCreateRequest {
+  space_id: number;
+  start_time: string;
+  end_time: string;
+  total_price: string;
+}
+
+interface MatchingCreateResponse {
+  matching_id: number;
+}
+
 function formatDate(value: string) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
@@ -41,6 +52,15 @@ export function getSentMatchRequests() {
 
 export function getInboxMatchRequests() {
   return getMatchings("/matchings/inbox");
+}
+
+export async function createMatching(payload: MatchingCreateRequest) {
+  const response = await apiClient.post<ApiResponse<MatchingCreateResponse>>(
+    "/matchings",
+    payload,
+  );
+
+  return String(response.data.data.matching_id);
 }
 
 export async function approveMatching(id: string) {

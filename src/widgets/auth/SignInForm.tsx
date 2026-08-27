@@ -3,6 +3,7 @@
 import { useState, type FormEvent } from "react";
 import Image from "next/image";
 import { useAuthStore } from "@/entities/auth";
+import { getApiErrorMessage } from "@/shared/api";
 import { TextField } from "./TextField";
 import { OAuthButton } from "./OAuthButton";
 
@@ -25,8 +26,10 @@ export function SignInForm({ onSuccess, onSwitchToSignUp }: SignInFormProps) {
     try {
       await login({ email, password });
       onSuccess();
-    } catch {
-      setError("이메일 또는 비밀번호를 확인해주세요.");
+    } catch (error) {
+      setError(
+        getApiErrorMessage(error, "이메일 또는 비밀번호를 확인해주세요."),
+      );
     } finally {
       setIsSubmitting(false);
     }

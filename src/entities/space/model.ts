@@ -5,5 +5,6 @@ export interface Space {
   name: string;
   address: string;
   category: SpaceCategory;
+  thumbnailUrl?: string;
   bookmarked: boolean;
 }

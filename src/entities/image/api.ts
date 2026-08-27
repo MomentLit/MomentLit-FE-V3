@@ -13,5 +13,11 @@ export async function uploadImage(file: File) {
     formData,
   );
 
-  return response.data.data.image_url;
+  const imageUrl = response.data.data.image_url;
+
+  if (!imageUrl) {
+    throw new Error("이미지 업로드 응답에 이미지 URL이 없습니다.");
+  }
+
+  return imageUrl;
 }

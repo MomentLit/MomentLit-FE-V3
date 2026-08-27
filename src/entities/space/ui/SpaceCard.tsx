@@ -12,7 +12,15 @@ interface SpaceCardProps {
 export function SpaceCard({ space, onToggleBookmark }: SpaceCardProps) {
   return (
     <Link href={`/spaces/${space.id}`} className="flex w-full flex-col gap-1">
-      <div className="relative flex aspect-[3/2] w-full items-start justify-end overflow-hidden rounded-xl bg-gray-100 p-4">
+      <div
+        className="relative flex aspect-[3/2] w-full items-start justify-end overflow-hidden rounded-xl bg-gray-100 bg-cover bg-center p-4"
+        style={
+          space.thumbnailUrl
+            ? { backgroundImage: `url(${space.thumbnailUrl})` }
+            : undefined
+        }
+      >
+        {space.thumbnailUrl && <div className="absolute inset-0 bg-black/5" />}
         <button
           type="button"
           aria-label={space.bookmarked ? "관심 공간 해제" : "관심 공간 등록"}
@@ -20,6 +28,7 @@ export function SpaceCard({ space, onToggleBookmark }: SpaceCardProps) {
             event.preventDefault();
             onToggleBookmark?.(space.id);
           }}
+          className="relative z-10"
         >
           <Bookmark
             size={24}

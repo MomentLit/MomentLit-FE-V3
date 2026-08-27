@@ -13,6 +13,31 @@ interface AddressResponse {
   postal_code?: string;
 }
 
+export interface SpaceCreateAddress {
+  sido: string;
+  sigungu: string;
+  eup_myeon_dong?: string;
+  road_address: string;
+  jibun_address?: string;
+  detail_address?: string;
+  postal_code?: string;
+}
+
+export interface SpaceCreateRequest {
+  name: string;
+  description: string | null;
+  address: SpaceCreateAddress;
+  thumbnail_url: string;
+  image_urls: string[];
+  price_per_hour: number;
+  category: SpaceCategory;
+  phone: string;
+}
+
+interface SpaceCreateResponse {
+  space_id: number;
+}
+
 interface SpaceListDto {
   space_id: number;
   name: string;
@@ -95,18 +120,26 @@ export function toSpace(dto: SpaceListDto): Space {
     name: dto.name,
     address: formatAddress(dto.address),
     category: toCategory(dto.category),
+    thumbnailUrl: dto.thumbnail_url,
     bookmarked: false,
   };
 }
 
 function toSpaceDetail(dto: SpaceDetailDto): SpaceDetail {
+  const imageUrls = [
+    dto.thumbnail_url,
+    ...(dto.image_urls ?? []),
+  ].filter((url, index, urls): url is string =>
+    Boolean(url) && urls.indexOf(url) === index,
+  );
+
   return {
     ...toSpace(dto),
     categoryLabel: dto.category,
     pricePerHour: dto.price_per_hour,
     description: dto.description,
     aiSummary: dto.ai_summary,
-    imageUrls: dto.image_urls,
+    imageUrls,
   };
 }
 
@@ -126,6 +159,15 @@ export async function getSpaces(params?: SpaceSearchParams) {
   >("/spaces", { params });
 
   return response.data.data.spaces.map(toSpace);
+}
+
+export async function createSpace(payload: SpaceCreateRequest) {
+  const response = await apiClient.post<ApiResponse<SpaceCreateResponse>>(
+    "/spaces",
+    payload,
+  );
+
+  return String(response.data.data.space_id);
 }
 
 export async function getMySpaces(params?: SpaceSearchParams) {

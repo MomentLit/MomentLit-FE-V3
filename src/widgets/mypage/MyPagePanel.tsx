@@ -29,7 +29,16 @@ export function MyPagePanel() {
         <p className="text-[28px] font-semibold text-gray-900">마이페이지</p>
 
         <div className="flex items-center gap-4 py-7">
-          <div className="size-14 shrink-0 rounded-full bg-gray-300" />
+          <div className="size-14 shrink-0 overflow-hidden rounded-full bg-gray-300">
+            {profile?.image_url && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={profile.image_url}
+                alt=""
+                className="size-full object-cover"
+              />
+            )}
+          </div>
           <div className="flex min-w-0 flex-1 flex-col gap-1">
             <p className="text-xl font-semibold text-gray-900">
               {profile?.name ?? "사용자"}

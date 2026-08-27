@@ -1,3 +1,4 @@
+import { getCurrentUserId } from "@/entities/auth";
 import { apiClient, type ApiResponse } from "@/shared/api";
 import type { ChatMessage, Conversation } from "./model";
 
@@ -16,6 +17,10 @@ interface ChatMessageDto {
   content: string;
   is_read: boolean;
   created_at: string;
+}
+
+interface ChatRoomCreateResponse {
+  chat_room_id: number;
 }
 
 function formatRelativeTime(value: string) {
@@ -46,10 +51,10 @@ function toConversation(dto: ChatRoomDto): Conversation {
   };
 }
 
-function toChatMessage(dto: ChatMessageDto): ChatMessage {
+function toChatMessage(dto: ChatMessageDto, currentUserId: string | null): ChatMessage {
   return {
     id: String(dto.message_id),
-    direction: "incoming",
+    direction: currentUserId && dto.sender_id === currentUserId ? "outgoing" : "incoming",
     text: dto.content,
     sentAt: formatTime(dto.created_at),
   };
@@ -63,10 +68,22 @@ export async function getConversations() {
   return response.data.data.chat_rooms.map(toConversation);
 }
 
+export async function createChatRoom(spaceId: string) {
+  const response = await apiClient.post<ApiResponse<ChatRoomCreateResponse>>(
+    "/chat",
+    { space_id: Number(spaceId) },
+  );
+
+  return String(response.data.data.chat_room_id);
+}
+
 export async function getChatMessages(chatRoomId: string) {
   const response = await apiClient.get<
     ApiResponse<{ chat_room_id: number; messages: ChatMessageDto[] }>
   >(`/chat/${chatRoomId}/messages`);
+  const currentUserId = getCurrentUserId();
 
-  return response.data.data.messages.map(toChatMessage);
+  return response.data.data.messages.map((dto) =>
+    toChatMessage(dto, currentUserId),
+  );
 }

@@ -3,7 +3,7 @@
 import { useMutation } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { LogOut } from "lucide-react";
-import { signOut } from "@/entities/auth";
+import { useAuthStore } from "@/entities/auth";
 
 interface LogoutModalProps {
   onClose: () => void;
@@ -11,9 +11,10 @@ interface LogoutModalProps {
 
 export function LogoutModal({ onClose }: LogoutModalProps) {
   const router = useRouter();
+  const logout = useAuthStore((state) => state.logout);
 
   const signOutMutation = useMutation({
-    mutationFn: signOut,
+    mutationFn: logout,
     onSuccess: () => {
       onClose();
       router.push("/");

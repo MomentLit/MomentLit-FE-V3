@@ -1,7 +1,9 @@
 "use client";
 
-import { useState, type KeyboardEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { ArrowUp, ChevronRight, ImagePlus } from "lucide-react";
+import { Client, type IMessage } from "@stomp/stompjs";
+import { getCurrentUserId } from "@/entities/auth";
 import {
   ChatBubble,
   type Conversation,
@@ -14,17 +16,184 @@ interface ChatPanelProps {
   dateLabel: string;
 }
 
+function formatTime(value: Date) {
+  return value.toLocaleTimeString("ko-KR", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function buildBrokerUrl() {
+  return (
+    process.env.NEXT_PUBLIC_CHAT_WS_URL ??
+    process.env.NEXT_PUBLIC_API_URL?.replace(/^http/, "ws").replace(/\/$/, "")
+      .concat("/ws/chat") ??
+    "ws://localhost:8080/ws/chat"
+  );
+}
+
+function toLiveMessage(
+  payload: unknown,
+  currentUserId: string | null,
+): ChatMessage | null {
+  if (!payload || typeof payload !== "object") return null;
+
+  const data = payload as {
+    message_id?: string | number;
+    sender_id?: string;
+    content?: string;
+    created_at?: string;
+  };
+
+  if (!data.content) return null;
+
+  return {
+    id: String(data.message_id ?? `ws-${Date.now()}`),
+    direction:
+      currentUserId && data.sender_id === currentUserId
+        ? "outgoing"
+        : "incoming",
+    text: data.content,
+    sentAt: data.created_at
+      ? formatTime(new Date(data.created_at))
+      : formatTime(new Date()),
+  };
+}
+
 export function ChatPanel({ conversation, messages, dateLabel }: ChatPanelProps) {
   const [draft, setDraft] = useState("");
+  const [liveMessages, setLiveMessages] = useState<ChatMessage[]>([]);
+  const [sendError, setSendError] = useState<string | null>(null);
+  const clientRef = useRef<Client | null>(null);
+  const pendingSendsRef = useRef<string[]>([]);
+  const currentUserId = useMemo(() => getCurrentUserId(), []);
+  const visibleMessages = useMemo(
+    () => [...messages, ...liveMessages],
+    [messages, liveMessages],
+  );
+
+  useEffect(() => {
+    if (!conversation) return;
+
+    const token =
+      window.localStorage.getItem("access_token") ??
+      window.localStorage.getItem("momentlit_access_token");
+
+    const client = new Client({
+      brokerURL: buildBrokerUrl(),
+      connectHeaders:
+        token && token !== "null" && token !== "undefined"
+          ? { Authorization: `Bearer ${token}` }
+          : {},
+      reconnectDelay: 5000,
+    });
+    clientRef.current = client;
+    pendingSendsRef.current = [];
+
+    client.onConnect = () => {
+      console.info("STOMP CONNECTED", { chatRoomId: conversation.id });
+
+      const pending = pendingSendsRef.current;
+      pendingSendsRef.current = [];
+      pending.forEach((content) => {
+        client.publish({
+          destination: `/app/chat/${conversation.id}`,
+          body: JSON.stringify({ content }),
+        });
+      });
+
+      client.subscribe(`/topic/chat/${conversation.id}`, (frame: IMessage) => {
+        try {
+          const message = toLiveMessage(JSON.parse(frame.body), currentUserId);
+          if (!message) return;
+
+          setLiveMessages((prev) => {
+            if (message.direction === "outgoing") {
+              const pendingIndex = prev.findIndex(
+                (item) => item.id.startsWith("local-") && item.text === message.text,
+              );
+              if (pendingIndex !== -1) {
+                const next = [...prev];
+                next[pendingIndex] = message;
+                return next;
+              }
+            }
+            return [...prev, message];
+          });
+        } catch {
+          // ignore malformed frames
+        }
+      });
+
+      client.subscribe("/user/queue/errors", (frame: IMessage) => {
+        try {
+          const parsed = JSON.parse(frame.body) as { message?: string };
+          setSendError(parsed.message ?? "메시지 전송에 실패했습니다.");
+        } catch {
+          setSendError("메시지 전송에 실패했습니다.");
+        }
+      });
+    };
+
+    client.onWebSocketClose = (event) => {
+      console.info("STOMP WS CLOSE", {
+        chatRoomId: conversation.id,
+        code: event.code,
+        reason: event.reason,
+      });
+    };
+
+    client.onStompError = (frame) => {
+      console.error("STOMP ERROR", frame);
+      setSendError("채팅 서버에 연결하지 못했습니다.");
+    };
+
+    client.onWebSocketError = (event) => {
+      console.error("STOMP WS ERROR", event);
+      setSendError("채팅 서버에 연결하지 못했습니다.");
+    };
+
+    client.activate();
+
+    return () => {
+      clientRef.current = null;
+      client.deactivate();
+    };
+  }, [conversation, currentUserId]);
 
   const handleSend = () => {
-    if (draft.trim().length === 0) return;
-    // TODO: append the message via the real send API once it exists.
+    const content = draft.trim();
+    const client = clientRef.current;
+
+    if (!conversation || content.length === 0 || !client) return;
+
+    if (client.connected) {
+      client.publish({
+        destination: `/app/chat/${conversation.id}`,
+        body: JSON.stringify({ content }),
+      });
+    } else {
+      pendingSendsRef.current.push(content);
+    }
+
+    setLiveMessages((prev) => [
+      ...prev,
+      {
+        id: `local-${Date.now()}`,
+        direction: "outgoing",
+        text: content,
+        sentAt: formatTime(new Date()),
+      },
+    ]);
     setDraft("");
+    setSendError(null);
   };
 
   const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (event.nativeEvent.isComposing || event.keyCode === 229) return;
+
     if (event.key === "Enter") {
+      event.preventDefault();
       handleSend();
     }
   };
@@ -63,7 +232,7 @@ export function ChatPanel({ conversation, messages, dateLabel }: ChatPanelProps)
           <div className="h-px flex-1 bg-gray-200" />
         </div>
 
-        {messages.map((message) => (
+        {visibleMessages.map((message) => (
           <ChatBubble key={message.id} message={message} />
         ))}
       </div>
@@ -79,7 +248,10 @@ export function ChatPanel({ conversation, messages, dateLabel }: ChatPanelProps)
         <input
           type="text"
           value={draft}
-          onChange={(event) => setDraft(event.target.value)}
+          onChange={(event) => {
+            setDraft(event.target.value);
+            setSendError(null);
+          }}
           onKeyDown={handleKeyDown}
           placeholder="사진 또는 메시지 보내기"
           className="min-w-0 flex-1 bg-transparent text-[15px] text-gray-600 outline-none placeholder:text-gray-600"
@@ -95,6 +267,11 @@ export function ChatPanel({ conversation, messages, dateLabel }: ChatPanelProps)
           </button>
         )}
       </div>
+      {sendError && (
+        <p className="border-t border-gray-100 px-10 pb-4 text-xs text-red-700">
+          {sendError}
+        </p>
+      )}
     </div>
   );
 }

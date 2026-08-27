@@ -96,6 +96,7 @@ export function toPopupSpace(dto: PopupListDto): Space {
     name: dto.title,
     address: formatAddress(dto.address),
     category: "POPUP_STORE",
+    thumbnailUrl: dto.thumbnail_url,
     bookmarked: false,
   };
 }
@@ -120,6 +121,7 @@ function toPopupDetail(dto: PopupDetailDto): PopupDetail {
       name: dto.space_name,
       address: formatAddress(dto.address),
       category: "OTHER",
+      thumbnailUrl: dto.thumbnail_url,
       bookmarked: false,
     },
   };

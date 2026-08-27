@@ -3,6 +3,7 @@
 import { useState, type FormEvent } from "react";
 import Image from "next/image";
 import { useAuthStore } from "@/entities/auth";
+import { getApiErrorMessage } from "@/shared/api";
 import { TextField } from "./TextField";
 import { OAuthButton } from "./OAuthButton";
 
@@ -46,10 +47,12 @@ export function SignUpForm({ onSuccess, onSwitchToSignIn }: SignUpFormProps) {
     setError(null);
     setIsSubmitting(true);
     try {
-      await register({ email, password, nickname, phone });
+      await register({ email, password, name: nickname, phone });
       onSuccess();
-    } catch {
-      setError("회원가입에 실패했습니다. 입력값을 확인해주세요.");
+    } catch (error) {
+      setError(
+        getApiErrorMessage(error, "회원가입에 실패했습니다. 입력값을 확인해주세요."),
+      );
     } finally {
       setIsSubmitting(false);
     }

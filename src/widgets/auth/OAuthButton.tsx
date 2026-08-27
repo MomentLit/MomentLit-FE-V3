@@ -20,13 +20,16 @@ interface OAuthButtonProps {
 }
 
 export function OAuthButton({ provider, label }: OAuthButtonProps) {
+  const baseURL = process.env.NEXT_PUBLIC_API_URL;
+  const href = baseURL ? `${baseURL}/auth/oauth/${provider}` : "#";
+
   return (
-    <button
-      type="button"
+    <a
+      href={href}
       className={`flex w-full items-center justify-center gap-3 rounded-xl py-3 text-sm font-semibold ${PROVIDER_STYLES[provider]}`}
     >
       <Image src={PROVIDER_ICON[provider]} alt="" width={18} height={18} />
       {label}
-    </button>
+    </a>
   );
 }

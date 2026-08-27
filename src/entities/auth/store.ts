@@ -1,9 +1,11 @@
 import { create } from "zustand";
 import {
   hasStoredSession,
+  completeOAuthLogin,
   signIn as signInRequest,
   signUp as signUpRequest,
   signOut as signOutRequest,
+  type OAuthProvider,
   type SignInPayload,
   type SignUpPayload,
 } from "./api";
@@ -13,9 +15,16 @@ interface AuthState {
   isHydrated: boolean;
   hydrate: () => void;
   login: (payload: SignInPayload) => Promise<void>;
+  completeOAuthLogin: (payload: {
+    provider: OAuthProvider;
+    code: string;
+    state?: string;
+  }) => Promise<void>;
   register: (payload: SignUpPayload) => Promise<void>;
   logout: () => Promise<void>;
 }
+
+const oauthLoginRequests = new Map<string, Promise<void>>();
 
 export const useAuthStore = create<AuthState>((set) => ({
   isAuthenticated: false,
@@ -27,9 +36,28 @@ export const useAuthStore = create<AuthState>((set) => ({
     await signInRequest(payload);
     set({ isAuthenticated: true });
   },
+  completeOAuthLogin: async (payload) => {
+    const requestKey = `${payload.provider}:${payload.code}`;
+    const existingRequest = oauthLoginRequests.get(requestKey);
+
+    if (existingRequest) {
+      return existingRequest;
+    }
+
+    const request = completeOAuthLogin(payload)
+      .then(() => {
+        set({ isAuthenticated: true });
+      })
+      .finally(() => {
+        oauthLoginRequests.delete(requestKey);
+      });
+
+    oauthLoginRequests.set(requestKey, request);
+
+    return request;
+  },
   register: async (payload) => {
     await signUpRequest(payload);
-    set({ isAuthenticated: true });
   },
   logout: async () => {
     await signOutRequest();

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import { SignInForm } from "./SignInForm";
 import { SignUpForm } from "./SignUpForm";
 
@@ -11,9 +12,11 @@ interface AuthModalProps {
 export function AuthModal({ onClose }: AuthModalProps) {
   const [mode, setMode] = useState<"SIGN_IN" | "SIGN_UP">("SIGN_IN");
 
-  return (
+  if (typeof document === "undefined") return null;
+
+  return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-6"
+      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/55 p-6"
       onClick={onClose}
     >
       <div
@@ -27,11 +30,12 @@ export function AuthModal({ onClose }: AuthModalProps) {
           />
         ) : (
           <SignUpForm
-            onSuccess={onClose}
+            onSuccess={() => setMode("SIGN_IN")}
             onSwitchToSignIn={() => setMode("SIGN_IN")}
           />
         )}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

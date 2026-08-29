@@ -3,10 +3,12 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useRequireAuth } from "@/entities/auth";
 import { ConversationList, ChatPanel } from "@/widgets/messages";
 import { getChatMessages, getConversations } from "@/entities/message";
 
 export default function MessagesPage() {
+  useRequireAuth();
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();

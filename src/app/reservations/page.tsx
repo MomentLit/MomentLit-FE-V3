@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useRequireAuth } from "@/entities/auth";
 import { getMyReservations } from "@/entities/reservation";
 import { StatCard } from "@/shared/ui";
 import {
@@ -11,6 +12,7 @@ import {
 } from "@/widgets/reservations";
 
 export default function ReservationsPage() {
+  useRequireAuth();
   const [filter, setFilter] = useState<ReservationFilter>("ALL");
   const reservationsQuery = useQuery({
     queryKey: ["matchings", "me"],

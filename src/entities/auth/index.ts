@@ -2,6 +2,8 @@ export {
   completeOAuthLogin,
   getCurrentUserId,
   hasStoredSession,
+  isAccessTokenExpired,
+  refreshAccessToken,
   signIn,
   signOut,
   signUp,
@@ -14,3 +16,4 @@ export type {
   SignUpResponse,
 } from "./api";
 export { useAuthStore } from "./store";
+export { useRequireAuth } from "./useRequireAuth";

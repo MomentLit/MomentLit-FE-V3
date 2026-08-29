@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
@@ -15,7 +14,6 @@ import {
 } from "lucide-react";
 import { useAuthStore } from "@/entities/auth";
 import { getMyProfile } from "@/entities/user";
-import { AuthModal } from "@/widgets/auth";
 import { SidebarNavItem } from "./SidebarNavItem";
 
 const iconProps = { size: 18, className: "shrink-0 text-gray-900" };
@@ -47,7 +45,7 @@ const NAV_SECTIONS = [
 
 export function Sidebar() {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
-  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const openAuthModal = useAuthStore((state) => state.openAuthModal);
 
   const profileQuery = useQuery({
     queryKey: ["users", "me"],
@@ -106,15 +104,11 @@ export function Sidebar() {
       ) : (
         <button
           type="button"
-          onClick={() => setIsAuthModalOpen(true)}
+          onClick={openAuthModal}
           className="flex h-12 w-full items-center justify-center rounded-xl bg-primary-500 text-lg font-medium text-white"
         >
           로그인
         </button>
-      )}
-
-      {isAuthModalOpen && (
-        <AuthModal onClose={() => setIsAuthModalOpen(false)} />
       )}
     </aside>
   );

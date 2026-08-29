@@ -42,7 +42,7 @@ function storeTokens(tokens: Pick<AuthSession, "access_token" | "refresh_token">
   window.localStorage.setItem("refresh_token", tokens.refresh_token);
 }
 
-function clearStoredTokens() {
+export function clearStoredTokens() {
   if (typeof window === "undefined") return;
 
   window.localStorage.removeItem("access_token");
@@ -76,7 +76,14 @@ function base64UrlDecode(value: string) {
   );
 }
 
-export function getCurrentUserId() {
+interface AccessTokenClaims {
+  sub?: string;
+  user_id?: string;
+  id?: string;
+  exp?: number;
+}
+
+function decodeAccessTokenClaims(): AccessTokenClaims | null {
   if (typeof window === "undefined") return null;
 
   const token =
@@ -89,16 +96,24 @@ export function getCurrentUserId() {
   if (!payload) return null;
 
   try {
-    const claims = JSON.parse(base64UrlDecode(payload)) as {
-      sub?: string;
-      user_id?: string;
-      id?: string;
-    };
-
-    return claims.sub ?? claims.user_id ?? claims.id ?? null;
+    return JSON.parse(base64UrlDecode(payload)) as AccessTokenClaims;
   } catch {
     return null;
   }
+}
+
+export function getCurrentUserId() {
+  const claims = decodeAccessTokenClaims();
+
+  return claims?.sub ?? claims?.user_id ?? claims?.id ?? null;
+}
+
+export function isAccessTokenExpired() {
+  const claims = decodeAccessTokenClaims();
+
+  if (!claims?.exp) return true;
+
+  return claims.exp * 1000 <= Date.now();
 }
 
 export async function signIn(payload: SignInPayload) {
@@ -150,4 +165,39 @@ export async function signOut() {
   } finally {
     clearStoredTokens();
   }
+}
+
+interface RefreshedTokens {
+  access_token: string;
+  refresh_token: string;
+  expires_in: number;
+}
+
+let refreshPromise: Promise<RefreshedTokens> | null = null;
+
+// The refresh token rotates on every successful call, so concurrent 401/403
+// retries must share a single in-flight request instead of each spending it.
+export function refreshAccessToken() {
+  if (!refreshPromise) {
+    refreshPromise = (async () => {
+      const refreshToken = getRefreshToken();
+
+      if (!refreshToken || refreshToken === "null" || refreshToken === "undefined") {
+        throw new Error("리프레시 토큰이 없습니다.");
+      }
+
+      const response = await publicApiClient.post<ApiResponse<RefreshedTokens>>(
+        "/auth/refresh",
+        { refresh_token: refreshToken },
+      );
+
+      storeTokens(response.data.data);
+
+      return response.data.data;
+    })().finally(() => {
+      refreshPromise = null;
+    });
+  }
+
+  return refreshPromise;
 }

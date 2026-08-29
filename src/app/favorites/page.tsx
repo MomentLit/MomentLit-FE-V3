@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRequireAuth } from "@/entities/auth";
 import { ListingSection } from "@/widgets/listing-section";
 import { Footer } from "@/widgets/footer";
 import { SpaceCard, PopupHighlightCard, type Space } from "@/entities/space";
@@ -50,6 +51,7 @@ const FAVORITE_SPACES: Space[] = [
 ];
 
 export default function FavoritesPage() {
+  useRequireAuth();
   const [popups, setPopups] = useState(FAVORITE_POPUPS);
   const [spaces, setSpaces] = useState(FAVORITE_SPACES);
 

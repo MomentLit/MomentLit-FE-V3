@@ -5,9 +5,10 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 
 interface GalleryProps {
   images: string[];
+  onImageClick?: (index: number) => void;
 }
 
-export function Gallery({ images }: GalleryProps) {
+export function Gallery({ images, onImageClick }: GalleryProps) {
   const [index, setIndex] = useState(0);
   const imageCount = images.length;
   const selectedImage = images[index];
@@ -24,10 +25,15 @@ export function Gallery({ images }: GalleryProps) {
   return (
     <div className="flex w-full flex-col gap-3">
       <div
-        className="relative flex h-[480px] w-full items-center justify-between overflow-hidden rounded-2xl bg-gray-100 bg-cover bg-center px-4"
+        className={`relative flex h-[480px] w-full items-center justify-between overflow-hidden rounded-2xl bg-gray-100 bg-cover bg-center px-4 ${
+          selectedImage && onImageClick ? "cursor-zoom-in" : ""
+        }`}
         style={
           selectedImage ? { backgroundImage: `url(${selectedImage})` } : undefined
         }
+        onClick={() => {
+          if (selectedImage) onImageClick?.(index);
+        }}
       >
         {!selectedImage && (
           <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-sm text-gray-500">
@@ -37,7 +43,10 @@ export function Gallery({ images }: GalleryProps) {
         <button
           type="button"
           aria-label="이전 이미지"
-          onClick={goPrev}
+          onClick={(event) => {
+            event.stopPropagation();
+            goPrev();
+          }}
           disabled={imageCount <= 1}
           className="flex size-11 shrink-0 items-center justify-center rounded-full bg-white text-gray-600 shadow-[0px_2px_8px_0px_rgba(33,41,48,0.15)]"
         >
@@ -51,7 +60,10 @@ export function Gallery({ images }: GalleryProps) {
         <button
           type="button"
           aria-label="다음 이미지"
-          onClick={goNext}
+          onClick={(event) => {
+            event.stopPropagation();
+            goNext();
+          }}
           disabled={imageCount <= 1}
           className="flex size-11 shrink-0 items-center justify-center rounded-full bg-white text-gray-600 shadow-[0px_2px_8px_0px_rgba(33,41,48,0.15)]"
         >

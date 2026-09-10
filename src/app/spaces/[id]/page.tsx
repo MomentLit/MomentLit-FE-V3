@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useParams, useRouter } from "next/navigation";
 import {
@@ -12,6 +12,8 @@ import {
   ReservationDateModal,
   ReviewSection,
   ReviewModal,
+  SpacePlacementModal,
+  type SpacePlacements,
 } from "@/widgets/detail-page";
 import { ListingSection } from "@/widgets/listing-section";
 import { Footer } from "@/widgets/footer";
@@ -47,6 +49,22 @@ export default function SpaceDetailPage() {
   const [isReservationModalOpen, setIsReservationModalOpen] = useState(false);
   const [isBooking, setIsBooking] = useState(false);
   const [isMessaging, setIsMessaging] = useState(false);
+  const [isPlacementModalOpen, setIsPlacementModalOpen] = useState(false);
+  const [placementImageIndex, setPlacementImageIndex] = useState(0);
+  const [placements, setPlacements] = useState<SpacePlacements>({});
+  const placementsRef = useRef(placements);
+
+  useEffect(() => {
+    placementsRef.current = placements;
+  }, [placements]);
+
+  useEffect(() => {
+    return () => {
+      Object.values(placementsRef.current)
+        .flat()
+        .forEach((item) => URL.revokeObjectURL(item.src));
+    };
+  }, []);
 
   const handleBookingRequest = async (date: Date) => {
     const startTime = new Date(date);
@@ -100,7 +118,13 @@ export default function SpaceDetailPage() {
 
   return (
     <div className="flex flex-col gap-8 p-10">
-      <Gallery images={space.imageUrls} />
+      <Gallery
+        images={space.imageUrls}
+        onImageClick={(index) => {
+          setPlacementImageIndex(index);
+          setIsPlacementModalOpen(true);
+        }}
+      />
 
       <DetailHeader
         categoryLabel={space.categoryLabel}
@@ -166,6 +190,16 @@ export default function SpaceDetailPage() {
           isSubmitting={isBooking}
           onClose={() => setIsReservationModalOpen(false)}
           onConfirm={handleBookingRequest}
+        />
+      )}
+
+      {isPlacementModalOpen && (
+        <SpacePlacementModal
+          images={space.imageUrls}
+          initialIndex={placementImageIndex}
+          placements={placements}
+          onPlacementsChange={setPlacements}
+          onClose={() => setIsPlacementModalOpen(false)}
         />
       )}
     </div>

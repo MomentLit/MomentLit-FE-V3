@@ -8,3 +8,5 @@ export { PopupHero } from "./PopupHero";
 export { ReviewSection } from "./ReviewSection";
 export { ReviewModal } from "./ReviewModal";
 export { ReservationDateModal } from "./ReservationDateModal";
+export { SpacePlacementModal } from "./SpacePlacementModal";
+export type { SpacePlacements } from "./SpacePlacementModal";

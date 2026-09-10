@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useRequireAuth } from "@/entities/auth";
@@ -8,6 +8,14 @@ import { ConversationList, ChatPanel } from "@/widgets/messages";
 import { getChatMessages, getConversations } from "@/entities/message";
 
 export default function MessagesPage() {
+  return (
+    <Suspense fallback={null}>
+      <MessagesPageContent />
+    </Suspense>
+  );
+}
+
+function MessagesPageContent() {
   useRequireAuth();
   const router = useRouter();
   const pathname = usePathname();

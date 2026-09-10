@@ -21,11 +21,10 @@ export function SignUpForm({ onSuccess, onSwitchToSignIn }: SignUpFormProps) {
   const [phone, setPhone] = useState("");
   const [agreedTerms, setAgreedTerms] = useState(false);
   const [agreedPrivacy, setAgreedPrivacy] = useState(false);
-  const [agreedMarketing, setAgreedMarketing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const agreedAll = agreedTerms && agreedPrivacy && agreedMarketing;
+  const agreedAll = agreedTerms && agreedPrivacy;
   const canSubmit =
     agreedTerms &&
     agreedPrivacy &&
@@ -35,7 +34,6 @@ export function SignUpForm({ onSuccess, onSwitchToSignIn }: SignUpFormProps) {
   const toggleAll = (checked: boolean) => {
     setAgreedTerms(checked);
     setAgreedPrivacy(checked);
-    setAgreedMarketing(checked);
   };
 
   const handleSubmit = async (event: FormEvent) => {
@@ -140,15 +138,6 @@ export function SignUpForm({ onSuccess, onSwitchToSignIn }: SignUpFormProps) {
             className="accent-primary-500"
           />
           [필수] 개인정보 수집 및 이용 동의
-        </label>
-        <label className="flex items-center gap-2 text-xs text-gray-600">
-          <input
-            type="checkbox"
-            checked={agreedMarketing}
-            onChange={(event) => setAgreedMarketing(event.target.checked)}
-            className="accent-primary-500"
-          />
-          [선택] 마케팅 정보 수신 동의
         </label>
       </div>
 

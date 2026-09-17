@@ -14,6 +14,7 @@ import { ListingSection } from "@/widgets/listing-section";
 import { Footer } from "@/widgets/footer";
 import { PopupHighlightCard } from "@/entities/space";
 import { getPopup, getPopupReviews, getPopups } from "@/entities/popup/api";
+import { useTogglePopupBookmark } from "@/entities/popup/useToggleBookmark";
 
 export function PopupDetailContent({ popupId }: { popupId: string }) {
   const popupQuery = useQuery({
@@ -32,7 +33,7 @@ export function PopupDetailContent({ popupId }: { popupId: string }) {
   const popup = popupQuery.data;
   const reviews = reviewsQuery.data ?? [];
   const similarPopups = similarPopupsQuery.data ?? [];
-  const [bookmarked, setBookmarked] = useState(false);
+  const togglePopupBookmark = useTogglePopupBookmark();
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
 
   if (popupQuery.isLoading) {
@@ -52,8 +53,10 @@ export function PopupDetailContent({ popupId }: { popupId: string }) {
         title={popup.name}
         address={popup.address}
         walkTime={popup.walkTime}
-        bookmarked={bookmarked}
-        onToggleBookmark={() => setBookmarked((prev) => !prev)}
+        bookmarked={popup.bookmarked}
+        onToggleBookmark={() =>
+          togglePopupBookmark.mutate({ id: popupId, liked: popup.bookmarked })
+        }
       />
 
       <div className="flex w-full flex-col gap-8">
@@ -80,8 +83,14 @@ export function PopupDetailContent({ popupId }: { popupId: string }) {
       />
 
       <ListingSection title="이 팝업과 비슷한 팝업">
-        {similarPopups.map((popup) => (
-          <PopupHighlightCard key={popup.id} space={popup} />
+        {similarPopups.map((similarPopup) => (
+          <PopupHighlightCard
+            key={similarPopup.id}
+            space={similarPopup}
+            onToggleBookmark={(id) =>
+              togglePopupBookmark.mutate({ id, liked: similarPopup.bookmarked })
+            }
+          />
         ))}
       </ListingSection>
 

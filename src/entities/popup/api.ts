@@ -1,6 +1,7 @@
 import { apiClient, type ApiResponse } from "@/shared/api";
 import type { Review } from "@/entities/review";
 import type { Space } from "@/entities/space";
+import { getLikedPopupIds, getLikedSpaceIds } from "@/shared/lib/bookmarks";
 
 interface AddressResponse {
   sido?: string;
@@ -97,7 +98,7 @@ export function toPopupSpace(dto: PopupListDto): Space {
     address: formatAddress(dto.address),
     category: "POPUP_STORE",
     thumbnailUrl: dto.thumbnail_url,
-    bookmarked: false,
+    bookmarked: getLikedPopupIds().includes(String(dto.popup_id)),
   };
 }
 
@@ -114,7 +115,7 @@ function toPopupDetail(dto: PopupDetailDto): PopupDetail {
     reviewCount: Number(dto.like_count) || 0,
     description: dto.description,
     aiSummary: dto.ai_brand_summary,
-    bookmarked: false,
+    bookmarked: getLikedPopupIds().includes(String(dto.popup_id)),
     host: { name: "호스트", hostingCount: 0, responseRate: 0 },
     hostSpace: {
       id: String(dto.popup_id),
@@ -122,7 +123,7 @@ function toPopupDetail(dto: PopupDetailDto): PopupDetail {
       address: formatAddress(dto.address),
       category: "OTHER",
       thumbnailUrl: dto.thumbnail_url,
-      bookmarked: false,
+      bookmarked: getLikedSpaceIds().includes(String(dto.popup_id)),
     },
   };
 }
@@ -175,4 +176,35 @@ export async function getPopupReviews(popupId: string) {
   >(`/popups/${popupId}/reviews`);
 
   return response.data.data.reviews.map(toReview);
+}
+
+interface PopupLikeDto {
+  popup_id: number;
+  like_count: number;
+  is_liked: boolean;
+}
+
+export interface PopupLikeResult {
+  likeCount: number;
+  liked: boolean;
+}
+
+function toPopupLikeResult(dto: PopupLikeDto): PopupLikeResult {
+  return { likeCount: dto.like_count, liked: dto.is_liked };
+}
+
+export async function likePopup(popupId: string) {
+  const response = await apiClient.post<ApiResponse<PopupLikeDto>>(
+    `/popups/${popupId}/likes`,
+  );
+
+  return toPopupLikeResult(response.data.data);
+}
+
+export async function unlikePopup(popupId: string) {
+  const response = await apiClient.delete<ApiResponse<PopupLikeDto>>(
+    `/popups/${popupId}/likes`,
+  );
+
+  return toPopupLikeResult(response.data.data);
 }

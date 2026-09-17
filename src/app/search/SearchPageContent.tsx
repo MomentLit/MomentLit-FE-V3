@@ -9,13 +9,16 @@ import {
   type SearchCategoryFilterValue,
 } from "@/features/search-category-filter";
 import { ListingSection } from "@/widgets/listing-section";
-import { SpaceCard, PopupHighlightCard } from "@/entities/space";
+import { SpaceCard, PopupHighlightCard, useToggleSpaceBookmark } from "@/entities/space";
 import { getSpaces } from "@/entities/space/api";
 import { getPopups } from "@/entities/popup/api";
+import { useTogglePopupBookmark } from "@/entities/popup/useToggleBookmark";
 
 export function SearchPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const toggleSpaceBookmark = useToggleSpaceBookmark();
+  const togglePopupBookmark = useTogglePopupBookmark();
 
   const [query, setQuery] = useState(searchParams.get("q") ?? "");
   const [submittedQuery, setSubmittedQuery] = useState(
@@ -83,11 +86,17 @@ export function SearchPageContent() {
             <PopupHighlightCard
               key={item.id}
               space={item}
+              onToggleBookmark={(id) =>
+                togglePopupBookmark.mutate({ id, liked: item.bookmarked })
+              }
             />
           ) : (
             <SpaceCard
               key={item.id}
               space={item}
+              onToggleBookmark={(id) =>
+                toggleSpaceBookmark.mutate({ id, liked: item.bookmarked })
+              }
             />
           ),
         )}

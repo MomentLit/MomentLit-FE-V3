@@ -15,7 +15,7 @@ import {
 } from "@/widgets/detail-page";
 import { ListingSection } from "@/widgets/listing-section";
 import { Footer } from "@/widgets/footer";
-import { SpaceCard } from "@/entities/space";
+import { SpaceCard, useToggleSpaceBookmark } from "@/entities/space";
 import { getSpace, getSpaceReviews, getSpaces } from "@/entities/space/api";
 import { createMatching } from "@/entities/match-request/api";
 import { createChatRoom } from "@/entities/message";
@@ -39,7 +39,7 @@ export function SpaceDetailContent({ spaceId }: { spaceId: string }) {
   const space = spaceQuery.data;
   const reviews = reviewsQuery.data ?? [];
   const similarSpaces = similarSpacesQuery.data ?? [];
-  const [bookmarked, setBookmarked] = useState(false);
+  const toggleSpaceBookmark = useToggleSpaceBookmark();
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
   const [isReservationModalOpen, setIsReservationModalOpen] = useState(false);
@@ -105,8 +105,10 @@ export function SpaceDetailContent({ spaceId }: { spaceId: string }) {
         title={space.name}
         address={space.address}
         walkTime=""
-        bookmarked={bookmarked}
-        onToggleBookmark={() => setBookmarked((prev) => !prev)}
+        bookmarked={space.bookmarked}
+        onToggleBookmark={() =>
+          toggleSpaceBookmark.mutate({ id: spaceId, liked: space.bookmarked })
+        }
       />
 
       <div className="flex w-full items-start gap-10">
@@ -145,8 +147,14 @@ export function SpaceDetailContent({ spaceId }: { spaceId: string }) {
       />
 
       <ListingSection title="이 공간과 비슷한 공간">
-        {similarSpaces.map((space) => (
-          <SpaceCard key={space.id} space={space} />
+        {similarSpaces.map((similarSpace) => (
+          <SpaceCard
+            key={similarSpace.id}
+            space={similarSpace}
+            onToggleBookmark={(id) =>
+              toggleSpaceBookmark.mutate({ id, liked: similarSpace.bookmarked })
+            }
+          />
         ))}
       </ListingSection>
 

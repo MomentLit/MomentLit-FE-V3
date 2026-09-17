@@ -1,63 +1,37 @@
 "use client";
 
-import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useRequireAuth } from "@/entities/auth";
 import { ListingSection } from "@/widgets/listing-section";
 import { Footer } from "@/widgets/footer";
-import { SpaceCard, PopupHighlightCard, type Space } from "@/entities/space";
-
-// TODO: replace with the user's real bookmarked spaces once a shared
-// bookmarks store / backend endpoint exists — right now this list is
-// independent from the bookmark toggles on the Home and Search pages.
-const FAVORITE_POPUPS: Space[] = [
-  {
-    id: "fav-popup-1",
-    name: "5등분의 신부 팝업",
-    address: "부산 강서구",
-    category: "POPUP_STORE",
-    bookmarked: true,
-  },
-  {
-    id: "fav-popup-2",
-    name: "짱구는 못말려 팝업",
-    address: "부산 해운대구",
-    category: "POPUP_STORE",
-    bookmarked: true,
-  },
-  {
-    id: "fav-popup-3",
-    name: "산리오 캐릭터즈 팝업",
-    address: "부산 수영구",
-    category: "POPUP_STORE",
-    bookmarked: true,
-  },
-];
-
-const FAVORITE_SPACES: Space[] = [
-  {
-    id: "fav-space-1",
-    name: "부산 소프트웨어 마이스터 고등학교",
-    address: "부산 강서구",
-    category: "CLASSROOM",
-    bookmarked: true,
-  },
-  {
-    id: "fav-space-2",
-    name: "부산 소프트웨어 마이스터 고등학교",
-    address: "부산 강서구",
-    category: "PRACTICE_ROOM",
-    bookmarked: true,
-  },
-];
+import { SpaceCard, PopupHighlightCard, useToggleSpaceBookmark } from "@/entities/space";
+import { getSpaces } from "@/entities/space/api";
+import { getPopups } from "@/entities/popup/api";
+import { useTogglePopupBookmark } from "@/entities/popup/useToggleBookmark";
+import { getLikedPopupIds, getLikedSpaceIds } from "@/shared/lib/bookmarks";
 
 export default function FavoritesPage() {
   useRequireAuth();
-  const [popups, setPopups] = useState(FAVORITE_POPUPS);
-  const [spaces, setSpaces] = useState(FAVORITE_SPACES);
+  const toggleSpaceBookmark = useToggleSpaceBookmark();
+  const togglePopupBookmark = useTogglePopupBookmark();
 
-  const removeFromFavorites = (setter: typeof setPopups, id: string) => {
-    setter((prev) => prev.filter((item) => item.id !== id));
-  };
+  const spacesQuery = useQuery({
+    queryKey: ["spaces"],
+    queryFn: () => getSpaces(),
+  });
+  const popupsQuery = useQuery({
+    queryKey: ["popups"],
+    queryFn: getPopups,
+  });
+
+  const likedSpaceIds = new Set(getLikedSpaceIds());
+  const likedPopupIds = new Set(getLikedPopupIds());
+  const spaces = (spacesQuery.data ?? []).filter((space) =>
+    likedSpaceIds.has(space.id),
+  );
+  const popups = (popupsQuery.data ?? []).filter((popup) =>
+    likedPopupIds.has(popup.id),
+  );
 
   return (
     <div className="flex flex-col gap-6 p-10">
@@ -66,21 +40,43 @@ export default function FavoritesPage() {
       </h1>
 
       <ListingSection title="관심 있는 팝업">
+        {popupsQuery.isLoading && (
+          <p className="text-sm text-gray-600">불러오는 중입니다.</p>
+        )}
+        {popupsQuery.isError && (
+          <p className="text-sm text-red-700">팝업을 불러오지 못했습니다.</p>
+        )}
+        {!popupsQuery.isLoading && popups.length === 0 && (
+          <p className="text-sm text-gray-600">관심 있는 팝업이 없습니다.</p>
+        )}
         {popups.map((popup) => (
           <PopupHighlightCard
             key={popup.id}
             space={popup}
-            onToggleBookmark={(id) => removeFromFavorites(setPopups, id)}
+            onToggleBookmark={(id) =>
+              togglePopupBookmark.mutate({ id, liked: true })
+            }
           />
         ))}
       </ListingSection>
 
       <ListingSection title="관심 있는 공간">
+        {spacesQuery.isLoading && (
+          <p className="text-sm text-gray-600">불러오는 중입니다.</p>
+        )}
+        {spacesQuery.isError && (
+          <p className="text-sm text-red-700">공간을 불러오지 못했습니다.</p>
+        )}
+        {!spacesQuery.isLoading && spaces.length === 0 && (
+          <p className="text-sm text-gray-600">관심 있는 공간이 없습니다.</p>
+        )}
         {spaces.map((space) => (
           <SpaceCard
             key={space.id}
             space={space}
-            onToggleBookmark={(id) => removeFromFavorites(setSpaces, id)}
+            onToggleBookmark={(id) =>
+              toggleSpaceBookmark.mutate({ id, liked: true })
+            }
           />
         ))}
       </ListingSection>

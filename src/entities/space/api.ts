@@ -1,6 +1,7 @@
 import { apiClient, type ApiResponse } from "@/shared/api";
 import type { Review } from "@/entities/review";
 import type { SpaceCategory } from "@/entities/space-category";
+import { getLikedSpaceIds } from "@/shared/lib/bookmarks";
 import type { Space } from "./model";
 
 interface AddressResponse {
@@ -121,7 +122,7 @@ export function toSpace(dto: SpaceListDto): Space {
     address: formatAddress(dto.address),
     category: toCategory(dto.category),
     thumbnailUrl: dto.thumbnail_url,
-    bookmarked: false,
+    bookmarked: getLikedSpaceIds().includes(String(dto.space_id)),
   };
 }
 
@@ -192,4 +193,35 @@ export async function getSpaceReviews(spaceId: string) {
   >(`/spaces/${spaceId}/reviews`);
 
   return response.data.data.reviews.map(toReview);
+}
+
+interface SpaceLikeDto {
+  space_id: number;
+  like_count: number;
+  is_liked: boolean;
+}
+
+export interface SpaceLikeResult {
+  likeCount: number;
+  liked: boolean;
+}
+
+function toSpaceLikeResult(dto: SpaceLikeDto): SpaceLikeResult {
+  return { likeCount: dto.like_count, liked: dto.is_liked };
+}
+
+export async function likeSpace(spaceId: string) {
+  const response = await apiClient.post<ApiResponse<SpaceLikeDto>>(
+    `/spaces/${spaceId}/likes`,
+  );
+
+  return toSpaceLikeResult(response.data.data);
+}
+
+export async function unlikeSpace(spaceId: string) {
+  const response = await apiClient.delete<ApiResponse<SpaceLikeDto>>(
+    `/spaces/${spaceId}/likes`,
+  );
+
+  return toSpaceLikeResult(response.data.data);
 }

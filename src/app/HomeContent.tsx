@@ -5,13 +5,16 @@ import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { SearchInput } from "@/shared/ui";
 import { ListingSection } from "@/widgets/listing-section";
-import { SpaceCard, PopupHighlightCard } from "@/entities/space";
+import { SpaceCard, PopupHighlightCard, useToggleSpaceBookmark } from "@/entities/space";
 import { getSpaces } from "@/entities/space/api";
 import { getPopupRecommendations } from "@/entities/popup/api";
+import { useTogglePopupBookmark } from "@/entities/popup/useToggleBookmark";
 
 export function HomeContent() {
   const router = useRouter();
   const [query, setQuery] = useState("");
+  const toggleSpaceBookmark = useToggleSpaceBookmark();
+  const togglePopupBookmark = useTogglePopupBookmark();
 
   const popupsQuery = useQuery({
     queryKey: ["popups", "recommendations"],
@@ -53,6 +56,9 @@ export function HomeContent() {
           <PopupHighlightCard
             key={popup.id}
             space={popup}
+            onToggleBookmark={(id) =>
+              togglePopupBookmark.mutate({ id, liked: popup.bookmarked })
+            }
           />
         ))}
       </ListingSection>
@@ -67,6 +73,9 @@ export function HomeContent() {
           <SpaceCard
             key={space.id}
             space={space}
+            onToggleBookmark={(id) =>
+              toggleSpaceBookmark.mutate({ id, liked: space.bookmarked })
+            }
           />
         ))}
       </ListingSection>

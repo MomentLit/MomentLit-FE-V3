@@ -7,7 +7,11 @@ import {
   SPACE_CATEGORY_LABELS,
   type SpaceCategory,
 } from "@/entities/space-category";
-import { createSpace } from "@/entities/space/api";
+import {
+  createSpace,
+  getPanoramaFileError,
+  toPanoramaImageUrl,
+} from "@/entities/space/api";
 import { uploadImage } from "@/entities/image";
 import { getApiErrorMessage } from "@/shared/api";
 
@@ -59,6 +63,7 @@ interface ImageUploadSlotProps {
   fileName?: string;
   previewUrl?: string;
   primary?: boolean;
+  label?: string;
   onChange: (file: File | null) => void;
 }
 
@@ -67,6 +72,7 @@ function ImageUploadSlot({
   fileName,
   previewUrl,
   primary = false,
+  label,
   onChange,
 }: ImageUploadSlotProps) {
   return (
@@ -87,7 +93,7 @@ function ImageUploadSlot({
           />
           <div className="absolute inset-x-0 bottom-0 bg-black/55 px-3 py-2 text-white">
             <span className="block truncate text-[13px] leading-5 font-medium">
-              {primary ? "대표 이미지" : "추가 이미지"}
+              {label ?? (primary ? "대표 이미지" : "추가 이미지")}
             </span>
             {fileName && (
               <span className="block truncate text-xs leading-4 text-white/80">
@@ -103,7 +109,7 @@ function ImageUploadSlot({
         <>
           <span className="text-[26px] leading-none">+</span>
           <span className="max-w-full px-3 text-center text-[13px] leading-5 font-medium break-words">
-            {file?.name ?? (primary ? "대표 이미지" : "이미지 추가")}
+            {file?.name ?? label ?? (primary ? "대표 이미지" : "이미지 추가")}
           </span>
         </>
       )}
@@ -141,6 +147,9 @@ export default function NewSpacePage() {
     "",
   ]);
   const imagePreviewUrlsRef = useRef(imagePreviewUrls);
+  const [panoramaFile, setPanoramaFile] = useState<File | null>(null);
+  const [panoramaPreviewUrl, setPanoramaPreviewUrl] = useState("");
+  const panoramaPreviewUrlRef = useRef(panoramaPreviewUrl);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -149,6 +158,9 @@ export default function NewSpacePage() {
       imagePreviewUrlsRef.current.forEach((previewUrl) => {
         if (previewUrl) URL.revokeObjectURL(previewUrl);
       });
+      if (panoramaPreviewUrlRef.current) {
+        URL.revokeObjectURL(panoramaPreviewUrlRef.current);
+      }
     };
   }, []);
 
@@ -166,6 +178,18 @@ export default function NewSpacePage() {
 
       next[index] = file ? URL.createObjectURL(file) : "";
       imagePreviewUrlsRef.current = next;
+
+      return next;
+    });
+  };
+
+  const handlePanoramaChange = (file: File | null) => {
+    setPanoramaFile(file);
+    setPanoramaPreviewUrl((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+
+      const next = file ? URL.createObjectURL(file) : "";
+      panoramaPreviewUrlRef.current = next;
 
       return next;
     });
@@ -199,11 +223,22 @@ export default function NewSpacePage() {
       return;
     }
 
+    const panoramaFileError = panoramaFile
+      ? getPanoramaFileError(panoramaFile)
+      : null;
+    if (panoramaFileError) {
+      setError(panoramaFileError);
+      return;
+    }
+
     setError(null);
     setIsSubmitting(true);
 
     try {
-      const imageUrls = await Promise.all(selectedFiles.map(uploadImage));
+      const [imageUrls, panoramaUrl] = await Promise.all([
+        Promise.all(selectedFiles.map(uploadImage)),
+        panoramaFile ? uploadImage(panoramaFile) : Promise.resolve(null),
+      ]);
       await createSpace({
         name,
         description: description.trim() || null,
@@ -217,7 +252,9 @@ export default function NewSpacePage() {
           postal_code: postalCode,
         },
         thumbnail_url: imageUrls[0],
-        image_urls: imageUrls,
+        image_urls: panoramaUrl
+          ? [...imageUrls, toPanoramaImageUrl(panoramaUrl)]
+          : imageUrls,
         price_per_hour: parsedPrice,
         category,
         phone,
@@ -373,6 +410,25 @@ export default function NewSpacePage() {
                   onChange={(file) => handleImageChange(index, file)}
                 />
               ))}
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <label className="text-sm leading-5 text-gray-900">
+              360도 사진 (선택)
+            </label>
+            <p className="text-sm leading-5 text-gray-600">
+              360도 사진을 등록하면 이용자가 공간 상세에서 공간을 둘러볼 수
+              있습니다. JPG, PNG, WEBP 형식의 10MB 이하 사진을 올려주세요.
+            </p>
+            <div className="grid grid-cols-3 gap-3">
+              <ImageUploadSlot
+                label="360도 사진"
+                file={panoramaFile}
+                fileName={panoramaFile?.name}
+                previewUrl={panoramaPreviewUrl}
+                onChange={handlePanoramaChange}
+              />
             </div>
           </div>
 

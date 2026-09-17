@@ -1,6 +1,6 @@
 "use client";
 
-import { Bookmark } from "lucide-react";
+import { Bookmark, Rotate3d } from "lucide-react";
 
 interface DetailHeaderProps {
   categoryLabel: string;
@@ -9,6 +9,7 @@ interface DetailHeaderProps {
   walkTime: string;
   bookmarked: boolean;
   onToggleBookmark: () => void;
+  onOpenPanorama?: () => void;
 }
 
 export function DetailHeader({
@@ -18,6 +19,7 @@ export function DetailHeader({
   walkTime,
   bookmarked,
   onToggleBookmark,
+  onOpenPanorama,
 }: DetailHeaderProps) {
   return (
     <div className="flex w-full items-start justify-between gap-4">
@@ -32,18 +34,30 @@ export function DetailHeader({
           {address} · {walkTime}
         </p>
       </div>
-      <button
-        type="button"
-        aria-pressed={bookmarked}
-        onClick={onToggleBookmark}
-        className="flex shrink-0 items-center gap-1.5 rounded-lg border border-gray-300 px-4 py-3 text-sm text-gray-900"
-      >
-        <Bookmark
-          size={16}
-          className={bookmarked ? "fill-red-500 text-red-500" : ""}
-        />
-        저장
-      </button>
+      <div className="flex shrink-0 items-center gap-2">
+        {onOpenPanorama && (
+          <button
+            type="button"
+            onClick={onOpenPanorama}
+            className="flex shrink-0 items-center gap-1.5 rounded-lg border border-gray-300 px-4 py-3 text-sm text-gray-900"
+          >
+            <Rotate3d size={16} />
+            360도 화면보기
+          </button>
+        )}
+        <button
+          type="button"
+          aria-pressed={bookmarked}
+          onClick={onToggleBookmark}
+          className="flex shrink-0 items-center gap-1.5 rounded-lg border border-gray-300 px-4 py-3 text-sm text-gray-900"
+        >
+          <Bookmark
+            size={16}
+            className={bookmarked ? "fill-red-500 text-red-500" : ""}
+          />
+          저장
+        </button>
+      </div>
     </div>
   );
 }

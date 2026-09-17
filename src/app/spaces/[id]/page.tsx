@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import dynamic from "next/dynamic";
 import { useParams, useRouter } from "next/navigation";
 import {
   Gallery,
@@ -13,15 +14,33 @@ import {
   ReviewSection,
   ReviewModal,
   SpacePlacementModal,
+  PanoramaEmptyModal,
   type SpacePlacements,
 } from "@/widgets/detail-page";
 import { ListingSection } from "@/widgets/listing-section";
 import { Footer } from "@/widgets/footer";
 import { SpaceCard } from "@/entities/space";
-import { getSpace, getSpaceReviews, getSpaces } from "@/entities/space/api";
+import {
+  getPanoramaFileError,
+  getSpace,
+  getSpaceReviews,
+  getSpaces,
+  updateSpacePanorama,
+} from "@/entities/space/api";
+import { uploadImage } from "@/entities/image";
+import { getCurrentUserId, useAuthStore } from "@/entities/auth";
 import { createMatching } from "@/entities/match-request/api";
 import { createChatRoom } from "@/entities/message";
 import { getApiErrorMessage } from "@/shared/api";
+
+// 3D 라이브러리는 브라우저에서만 동작하고 용량이 커서 360도 화면을 열 때만 불러옵니다.
+const PanoramaViewerModal = dynamic(
+  () =>
+    import("@/widgets/detail-page/PanoramaViewerModal").then(
+      (module) => module.PanoramaViewerModal,
+    ),
+  { ssr: false },
+);
 
 export default function SpaceDetailPage() {
   const router = useRouter();
@@ -52,6 +71,15 @@ export default function SpaceDetailPage() {
   const [isPlacementModalOpen, setIsPlacementModalOpen] = useState(false);
   const [placementImageIndex, setPlacementImageIndex] = useState(0);
   const [placements, setPlacements] = useState<SpacePlacements>({});
+  const [isPanoramaModalOpen, setIsPanoramaModalOpen] = useState(false);
+  const [isPanoramaUploading, setIsPanoramaUploading] = useState(false);
+  const [panoramaError, setPanoramaError] = useState<string | null>(null);
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const currentUserId = useMemo(
+    () => (isAuthenticated ? getCurrentUserId() : null),
+    [isAuthenticated],
+  );
+  const isHost = Boolean(currentUserId && space?.hostId === currentUserId);
   const placementsRef = useRef(placements);
 
   useEffect(() => {
@@ -90,6 +118,34 @@ export default function SpaceDetailPage() {
     } finally {
       setIsBooking(false);
     }
+  };
+
+  const handlePanoramaUpload = async (file: File) => {
+    const fileError = getPanoramaFileError(file);
+    if (fileError) {
+      setPanoramaError(fileError);
+      return;
+    }
+
+    setPanoramaError(null);
+    setIsPanoramaUploading(true);
+
+    try {
+      const panoramaUrl = await uploadImage(file);
+      await updateSpacePanorama(spaceId, panoramaUrl);
+      await spaceQuery.refetch();
+    } catch (error) {
+      setPanoramaError(
+        getApiErrorMessage(error, "360도 사진을 등록하지 못했습니다."),
+      );
+    } finally {
+      setIsPanoramaUploading(false);
+    }
+  };
+
+  const handlePanoramaClose = () => {
+    setIsPanoramaModalOpen(false);
+    setPanoramaError(null);
   };
 
   const handleMessage = async () => {
@@ -133,6 +189,7 @@ export default function SpaceDetailPage() {
         walkTime=""
         bookmarked={bookmarked}
         onToggleBookmark={() => setBookmarked((prev) => !prev)}
+        onOpenPanorama={() => setIsPanoramaModalOpen(true)}
       />
 
       <div className="flex w-full items-start gap-10">
@@ -192,6 +249,22 @@ export default function SpaceDetailPage() {
           onConfirm={handleBookingRequest}
         />
       )}
+
+      {isPanoramaModalOpen &&
+        (space.panoramaUrl ? (
+          <PanoramaViewerModal
+            imageUrl={space.panoramaUrl}
+            onClose={handlePanoramaClose}
+          />
+        ) : (
+          <PanoramaEmptyModal
+            canUpload={isHost}
+            isUploading={isPanoramaUploading}
+            error={panoramaError}
+            onUpload={handlePanoramaUpload}
+            onClose={handlePanoramaClose}
+          />
+        ))}
 
       {isPlacementModalOpen && (
         <SpacePlacementModal

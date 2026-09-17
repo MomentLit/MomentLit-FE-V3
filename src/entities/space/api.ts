@@ -48,6 +48,7 @@ interface SpaceListDto {
 }
 
 export interface SpaceDetailDto extends SpaceListDto {
+  host_id: string;
   description: string;
   ai_summary: string;
   image_urls: string[];
@@ -68,6 +69,8 @@ export interface SpaceDetail extends Space {
   description: string;
   aiSummary: string;
   imageUrls: string[];
+  hostId: string;
+  panoramaUrl: string | null;
 }
 
 export interface SpaceSearchParams {
@@ -125,10 +128,23 @@ export function toSpace(dto: SpaceListDto): Space {
   };
 }
 
+// 360도 사진은 따로 저장하는 필드가 없어 공간 사진 목록(image_urls)에 함께 저장하고,
+// URL 끝의 표시로 구분합니다. '#' 뒤 값은 서버로 전송되지 않아 이미지 요청에는 영향이 없습니다.
+const PANORAMA_URL_MARKER = "#panorama";
+
+export function toPanoramaImageUrl(url: string) {
+  return `${url}${PANORAMA_URL_MARKER}`;
+}
+
+function isPanoramaImageUrl(url: string) {
+  return url.endsWith(PANORAMA_URL_MARKER);
+}
+
 function toSpaceDetail(dto: SpaceDetailDto): SpaceDetail {
+  const storedImageUrls = dto.image_urls ?? [];
   const imageUrls = [
     dto.thumbnail_url,
-    ...(dto.image_urls ?? []),
+    ...storedImageUrls.filter((url) => !isPanoramaImageUrl(url)),
   ].filter((url, index, urls): url is string =>
     Boolean(url) && urls.indexOf(url) === index,
   );
@@ -140,6 +156,8 @@ function toSpaceDetail(dto: SpaceDetailDto): SpaceDetail {
     description: dto.description,
     aiSummary: dto.ai_summary,
     imageUrls,
+    hostId: dto.host_id,
+    panoramaUrl: storedImageUrls.find(isPanoramaImageUrl) ?? null,
   };
 }
 
@@ -184,6 +202,39 @@ export async function getSpace(spaceId: string) {
   );
 
   return toSpaceDetail(response.data.data);
+}
+
+// 이미지 업로드 API가 허용하는 형식과 용량(10MB)에 맞춰 360도 사진을 확인합니다.
+const PANORAMA_FILE_TYPES = ["image/jpeg", "image/png", "image/webp"];
+const MAX_PANORAMA_FILE_SIZE = 10 * 1024 * 1024;
+
+export function getPanoramaFileError(file: File) {
+  if (!PANORAMA_FILE_TYPES.includes(file.type)) {
+    return "360도 사진은 JPG, PNG, WEBP 형식만 올릴 수 있습니다.";
+  }
+
+  if (file.size > MAX_PANORAMA_FILE_SIZE) {
+    return "360도 사진은 10MB 이하로 올려주세요.";
+  }
+
+  return null;
+}
+
+// 공간 수정 API는 image_urls 전체를 교체하므로, 현재 사진 목록에 360도 사진을 더해 보냅니다.
+export async function updateSpacePanorama(
+  spaceId: string,
+  panoramaUrl: string,
+) {
+  const response = await apiClient.get<ApiResponse<SpaceDetailDto>>(
+    `/spaces/${spaceId}`,
+  );
+  const imageUrls = (response.data.data.image_urls ?? []).filter(
+    (url) => !isPanoramaImageUrl(url),
+  );
+
+  await apiClient.patch(`/spaces/${spaceId}`, {
+    image_urls: [...imageUrls, toPanoramaImageUrl(panoramaUrl)],
+  });
 }
 
 export async function getSpaceReviews(spaceId: string) {

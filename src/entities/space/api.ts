@@ -35,6 +35,15 @@ export interface SpaceCreateRequest {
   phone: string;
 }
 
+export interface SpaceUpdateRequest {
+  name?: string;
+  description?: string | null;
+  thumbnail_url?: string;
+  image_urls?: string[];
+  price_per_hour?: number;
+  category?: SpaceCategory;
+}
+
 interface SpaceCreateResponse {
   space_id: number;
 }
@@ -185,6 +194,17 @@ export async function getSpace(spaceId: string) {
   );
 
   return toSpaceDetail(response.data.data);
+}
+
+export async function updateSpace(
+  spaceId: string,
+  payload: SpaceUpdateRequest,
+) {
+  await apiClient.patch(`/spaces/${spaceId}`, payload);
+}
+
+export async function deleteSpace(spaceId: string) {
+  await apiClient.delete(`/spaces/${spaceId}`);
 }
 
 export async function getSpaceReviews(spaceId: string) {

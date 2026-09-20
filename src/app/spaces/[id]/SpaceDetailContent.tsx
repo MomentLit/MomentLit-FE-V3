@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
-import { Pencil, Trash2, X } from "lucide-react";
+import { CalendarClock, Pencil, Trash2, X } from "lucide-react";
 import {
   Gallery,
   DetailHeader,
@@ -11,6 +11,7 @@ import {
   AboutSection,
   BookingCard,
   ReservationDateModal,
+  ScheduleManageModal,
   ReviewSection,
   ReviewModal,
 } from "@/widgets/detail-page";
@@ -254,6 +255,7 @@ export function SpaceDetailContent({ spaceId }: { spaceId: string }) {
   const [isMessaging, setIsMessaging] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
 
   const deleteMutation = useMutation({
     mutationFn: () => deleteSpace(spaceId),
@@ -346,6 +348,14 @@ export function SpaceDetailContent({ spaceId }: { spaceId: string }) {
           </button>
           <button
             type="button"
+            onClick={() => setIsScheduleModalOpen(true)}
+            className="inline-flex items-center gap-2 rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-medium text-gray-800 hover:bg-gray-50"
+          >
+            <CalendarClock size={16} />
+            이용 가능 날짜 관리
+          </button>
+          <button
+            type="button"
             onClick={() => setIsDeleteModalOpen(true)}
             className="inline-flex items-center gap-2 rounded-lg border border-red-200 px-4 py-2.5 text-sm font-medium text-red-600 hover:bg-red-50"
           >
@@ -416,6 +426,13 @@ export function SpaceDetailContent({ spaceId }: { spaceId: string }) {
           isSubmitting={isBooking}
           onClose={() => setIsReservationModalOpen(false)}
           onConfirm={handleBookingRequest}
+        />
+      )}
+
+      {isScheduleModalOpen && (
+        <ScheduleManageModal
+          spaceId={spaceId}
+          onClose={() => setIsScheduleModalOpen(false)}
         />
       )}
 

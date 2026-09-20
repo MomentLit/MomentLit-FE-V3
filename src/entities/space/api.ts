@@ -245,3 +245,57 @@ export async function unlikeSpace(spaceId: string) {
 
   return toSpaceLikeResult(response.data.data);
 }
+
+interface ScheduleTimeBlockDto {
+  schedule_id: number;
+  start_time: string;
+  end_time: string;
+  status: string;
+}
+
+interface ScheduleListDto {
+  date: string;
+  time_blocks: ScheduleTimeBlockDto[];
+}
+
+export interface SpaceScheduleBlock {
+  scheduleId: number;
+  startTime: string;
+  endTime: string;
+  status: "AVAILABLE" | "BLOCKED";
+}
+
+function toScheduleBlocks(groups: ScheduleListDto[]): SpaceScheduleBlock[] {
+  return groups.flatMap((group) =>
+    group.time_blocks.map((block) => ({
+      scheduleId: block.schedule_id,
+      startTime: block.start_time,
+      endTime: block.end_time,
+      status: block.status as SpaceScheduleBlock["status"],
+    })),
+  );
+}
+
+export async function getSpaceSchedules(spaceId: string) {
+  const response = await apiClient.get<
+    ApiResponse<{ schedules: ScheduleListDto[] }>
+  >(`/spaces/${spaceId}/schedule`);
+
+  return toScheduleBlocks(response.data.data.schedules);
+}
+
+export interface SpaceScheduleCreateRequest {
+  start_time: string;
+  end_time: string;
+}
+
+export async function createSpaceSchedule(
+  spaceId: string,
+  payload: SpaceScheduleCreateRequest,
+) {
+  await apiClient.post(`/spaces/${spaceId}/schedule`, payload);
+}
+
+export async function deleteSpaceSchedule(spaceId: string, scheduleId: number) {
+  await apiClient.delete(`/spaces/${spaceId}/schedule/${scheduleId}`);
+}

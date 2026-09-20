@@ -4,16 +4,28 @@ interface ChatBubbleProps {
   message: ChatMessage;
 }
 
+const IMAGE_URL_PATTERN = /^https?:\/\/\S+\.(png|jpe?g|gif|webp|avif|bmp)(\?\S*)?$/i;
+
 export function ChatBubble({ message }: ChatBubbleProps) {
   const isOutgoing = message.direction === "outgoing";
+  const isImage = IMAGE_URL_PATTERN.test(message.text);
 
   const bubble = (
     <div
-      className={`max-w-[440px] rounded-2xl px-[18px] py-[14px] ${
-        isOutgoing ? "bg-primary-500 text-white" : "bg-gray-100 text-gray-900"
-      }`}
+      className={`max-w-[440px] overflow-hidden rounded-2xl ${
+        isImage ? "" : "px-[18px] py-[14px]"
+      } ${isOutgoing ? "bg-primary-500 text-white" : "bg-gray-100 text-gray-900"}`}
     >
-      <p className="text-[15px] leading-[22px]">{message.text}</p>
+      {isImage ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={message.text}
+          alt="전송된 이미지"
+          className="block max-h-[320px] w-full object-cover"
+        />
+      ) : (
+        <p className="text-[15px] leading-[22px]">{message.text}</p>
+      )}
     </div>
   );
 

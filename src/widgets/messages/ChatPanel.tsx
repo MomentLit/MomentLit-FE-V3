@@ -1,9 +1,18 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type KeyboardEvent,
+} from "react";
 import { ArrowUp, ChevronRight, ImagePlus } from "lucide-react";
 import { Client, type IMessage } from "@stomp/stompjs";
 import { getCurrentUserId } from "@/entities/auth";
+import { uploadImage } from "@/entities/image";
+import { getApiErrorMessage } from "@/shared/api";
 import {
   ChatBubble,
   type Conversation,
@@ -64,13 +73,18 @@ export function ChatPanel({ conversation, messages, dateLabel }: ChatPanelProps)
   const [draft, setDraft] = useState("");
   const [liveMessages, setLiveMessages] = useState<ChatMessage[]>([]);
   const [sendError, setSendError] = useState<string | null>(null);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
   const clientRef = useRef<Client | null>(null);
   const pendingSendsRef = useRef<string[]>([]);
+  const imageInputRef = useRef<HTMLInputElement | null>(null);
   const currentUserId = useMemo(() => getCurrentUserId(), []);
-  const visibleMessages = useMemo(
-    () => [...messages, ...liveMessages],
-    [messages, liveMessages],
-  );
+  const visibleMessages = useMemo(() => {
+    const persistedIds = new Set(messages.map((message) => message.id));
+    return [
+      ...messages,
+      ...liveMessages.filter((message) => !persistedIds.has(message.id)),
+    ];
+  }, [messages, liveMessages]);
 
   useEffect(() => {
     if (!conversation) return;
@@ -161,11 +175,10 @@ export function ChatPanel({ conversation, messages, dateLabel }: ChatPanelProps)
     };
   }, [conversation, currentUserId]);
 
-  const handleSend = () => {
-    const content = draft.trim();
+  const sendContent = (content: string) => {
     const client = clientRef.current;
 
-    if (!conversation || content.length === 0 || !client) return;
+    if (!conversation || !client) return;
 
     if (client.connected) {
       client.publish({
@@ -185,8 +198,39 @@ export function ChatPanel({ conversation, messages, dateLabel }: ChatPanelProps)
         sentAt: formatTime(new Date()),
       },
     ]);
+  };
+
+  const handleSend = () => {
+    const content = draft.trim();
+
+    if (content.length === 0) return;
+
+    sendContent(content);
     setDraft("");
     setSendError(null);
+  };
+
+  const handleImageButtonClick = () => {
+    imageInputRef.current?.click();
+  };
+
+  const handleImageFileChange = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+
+    if (!file) return;
+
+    setSendError(null);
+    setIsUploadingImage(true);
+
+    try {
+      const imageUrl = await uploadImage(file);
+      sendContent(imageUrl);
+    } catch (error) {
+      setSendError(getApiErrorMessage(error, "이미지 업로드에 실패했습니다."));
+    } finally {
+      setIsUploadingImage(false);
+    }
   };
 
   const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
@@ -241,10 +285,19 @@ export function ChatPanel({ conversation, messages, dateLabel }: ChatPanelProps)
         <button
           type="button"
           aria-label="이미지 추가"
-          className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary-500 text-white"
+          onClick={handleImageButtonClick}
+          disabled={isUploadingImage}
+          className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary-500 text-white disabled:opacity-60"
         >
           <ImagePlus size={20} />
         </button>
+        <input
+          type="file"
+          accept="image/*"
+          ref={imageInputRef}
+          onChange={handleImageFileChange}
+          className="sr-only"
+        />
         <input
           type="text"
           value={draft}

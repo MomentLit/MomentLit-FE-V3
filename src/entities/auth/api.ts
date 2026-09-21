@@ -162,6 +162,10 @@ export async function signOut() {
         refresh_token: refreshToken,
       });
     }
+  } catch {
+    // Best-effort: even if the server-side signout call fails (expired
+    // token, network error, etc.), the user must still end up logged out
+    // locally on the first click rather than needing a retry.
   } finally {
     clearStoredTokens();
   }

@@ -22,7 +22,7 @@ import {
   type SpaceCategory,
 } from "@/entities/space-category";
 import { uploadImage } from "@/entities/image";
-import { SpaceCard, useToggleSpaceBookmark } from "@/entities/space";
+import { MAX_SPACE_IMAGES, SpaceCard, useToggleSpaceBookmark } from "@/entities/space";
 import {
   deleteSpace,
   getMySpaces,
@@ -50,6 +50,7 @@ function SpaceEditModal({ space, onClose, onSaved }: SpaceEditModalProps) {
   const [pricePerHour, setPricePerHour] = useState(String(space.pricePerHour));
   const [category, setCategory] = useState<SpaceCategory>(space.category);
   const [imageUrls, setImageUrls] = useState(space.imageUrls);
+  const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const updateMutation = useMutation({
@@ -82,15 +83,28 @@ function SpaceEditModal({ space, onClose, onSaved }: SpaceEditModalProps) {
     },
   });
 
-  const handleImageUpload = async (file: File | null) => {
-    if (!file) return;
+  const handleImageUpload = async (fileList: FileList | null) => {
+    const files = Array.from(fileList ?? []);
+    if (!files.length) return;
 
-    setError(null);
+    const remaining = MAX_SPACE_IMAGES - imageUrls.length;
+    const accepted = files.slice(0, Math.max(remaining, 0));
+
+    setError(
+      accepted.length < files.length
+        ? `사진은 최대 ${MAX_SPACE_IMAGES}장까지 등록할 수 있어요.`
+        : null,
+    );
+    if (!accepted.length) return;
+
+    setIsUploading(true);
     try {
-      const imageUrl = await uploadImage(file);
-      setImageUrls((current) => [...current, imageUrl]);
+      const uploadedUrls = await Promise.all(accepted.map(uploadImage));
+      setImageUrls((current) => [...current, ...uploadedUrls].slice(0, MAX_SPACE_IMAGES));
     } catch (uploadError) {
       setError(getApiErrorMessage(uploadError, "이미지를 업로드하지 못했습니다."));
+    } finally {
+      setIsUploading(false);
     }
   };
 
@@ -163,7 +177,10 @@ function SpaceEditModal({ space, onClose, onSaved }: SpaceEditModalProps) {
 
           <div className="flex flex-col gap-2">
             <p className="text-sm font-medium text-gray-900">공간 사진</p>
-            <p className="text-xs text-gray-600">첫 번째 사진이 대표 이미지로 사용됩니다.</p>
+            <p className="text-xs text-gray-600">
+              여러 장을 한 번에 선택할 수 있어요. 첫 번째 사진이 대표 이미지로
+              사용됩니다. ({imageUrls.length}/{MAX_SPACE_IMAGES})
+            </p>
             <div className="grid grid-cols-3 gap-3">
               {imageUrls.map((imageUrl, index) => (
                 <div key={imageUrl} className="group relative aspect-[3/2] overflow-hidden rounded-xl bg-gray-100">
@@ -184,19 +201,23 @@ function SpaceEditModal({ space, onClose, onSaved }: SpaceEditModalProps) {
                   {index === 0 && <span className="absolute bottom-2 left-2 rounded bg-black/65 px-2 py-1 text-xs text-white">대표</span>}
                 </div>
               ))}
-              <label className="flex aspect-[3/2] cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border border-dashed border-gray-300 text-sm text-gray-600 hover:border-primary-400 hover:bg-primary-50">
-                <span className="text-xl">+</span>
-                사진 추가
-                <input
-                  type="file"
-                  accept="image/*"
-                  className="sr-only"
-                  onChange={(event) => {
-                    void handleImageUpload(event.target.files?.[0] ?? null);
-                    event.target.value = "";
-                  }}
-                />
-              </label>
+              {imageUrls.length < MAX_SPACE_IMAGES && (
+                <label className="flex aspect-[3/2] cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border border-dashed border-gray-300 text-sm text-gray-600 hover:border-primary-400 hover:bg-primary-50">
+                  <span className="text-xl">+</span>
+                  {isUploading ? "업로드 중" : "사진 추가"}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    disabled={isUploading}
+                    className="sr-only"
+                    onChange={(event) => {
+                      void handleImageUpload(event.target.files);
+                      event.target.value = "";
+                    }}
+                  />
+                </label>
+              )}
             </div>
           </div>
 
@@ -209,7 +230,7 @@ function SpaceEditModal({ space, onClose, onSaved }: SpaceEditModalProps) {
             <button
               type="button"
               onClick={() => updateMutation.mutate()}
-              disabled={updateMutation.isPending}
+              disabled={updateMutation.isPending || isUploading}
               className="rounded-xl bg-primary-500 px-5 py-3 text-sm font-medium text-white hover:bg-primary-600 disabled:bg-gray-300"
             >
               {updateMutation.isPending ? "저장 중" : "저장하기"}

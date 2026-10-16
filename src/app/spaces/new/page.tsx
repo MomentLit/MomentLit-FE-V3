@@ -2,11 +2,13 @@
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
+import { X } from "lucide-react";
 import {
   SPACE_CATEGORIES,
   SPACE_CATEGORY_LABELS,
   type SpaceCategory,
 } from "@/entities/space-category";
+import { MAX_SPACE_IMAGES } from "@/entities/space";
 import { createSpace } from "@/entities/space/api";
 import { uploadImage } from "@/entities/image";
 import { getApiErrorMessage } from "@/shared/api";
@@ -54,60 +56,54 @@ function TextInput({
   );
 }
 
-interface ImageUploadSlotProps {
-  file?: File | null;
-  fileName?: string;
-  previewUrl?: string;
-  primary?: boolean;
-  onChange: (file: File | null) => void;
+interface SelectedImage {
+  file: File;
+  previewUrl: string;
 }
 
-function ImageUploadSlot({
-  file,
-  fileName,
-  previewUrl,
-  primary = false,
-  onChange,
-}: ImageUploadSlotProps) {
+interface ImagePreviewProps {
+  image: SelectedImage;
+  index: number;
+  onRemove: () => void;
+  onMakePrimary: () => void;
+}
+
+function ImagePreview({ image, index, onRemove, onMakePrimary }: ImagePreviewProps) {
+  const primary = index === 0;
+
   return (
-    <label
-      className="group relative flex h-[170px] min-w-0 flex-1 cursor-pointer flex-col items-center justify-center gap-2 overflow-hidden rounded-xl border border-dashed border-gray-300 bg-gray-50 text-gray-600 transition-colors hover:border-primary-400 hover:bg-primary-50"
-    >
-      <input
-        type="file"
-        accept="image/*"
-        onChange={(event) => onChange(event.target.files?.[0] ?? null)}
-        className="sr-only"
+    <div className="group relative h-[170px] min-w-0 overflow-hidden rounded-xl bg-gray-100">
+      <div
+        role="img"
+        aria-label={`공간 사진 ${index + 1}`}
+        className="absolute inset-0 bg-cover bg-center"
+        style={{ backgroundImage: `url(${image.previewUrl})` }}
       />
-      {previewUrl ? (
-        <>
-          <div
-            className="absolute inset-0 bg-cover bg-center"
-            style={{ backgroundImage: `url(${previewUrl})` }}
-          />
-          <div className="absolute inset-x-0 bottom-0 bg-black/55 px-3 py-2 text-white">
-            <span className="block truncate text-[13px] leading-5 font-medium">
-              {primary ? "대표 이미지" : "추가 이미지"}
-            </span>
-            {fileName && (
-              <span className="block truncate text-xs leading-4 text-white/80">
-                {fileName}
-              </span>
-            )}
-          </div>
-          <div className="absolute inset-0 flex items-center justify-center bg-black/0 text-sm font-medium text-white opacity-0 transition group-hover:bg-black/35 group-hover:opacity-100">
-            사진 변경
-          </div>
-        </>
-      ) : (
-        <>
-          <span className="text-[26px] leading-none">+</span>
-          <span className="max-w-full px-3 text-center text-[13px] leading-5 font-medium break-words">
-            {file?.name ?? (primary ? "대표 이미지" : "이미지 추가")}
-          </span>
-        </>
-      )}
-    </label>
+      <button
+        type="button"
+        aria-label={`공간 사진 ${index + 1} 삭제`}
+        onClick={onRemove}
+        className="absolute top-2 right-2 rounded-full bg-black/65 p-1 text-white hover:bg-black"
+      >
+        <X size={14} />
+      </button>
+      <div className="absolute inset-x-0 bottom-0 flex items-center justify-between gap-2 bg-black/55 px-3 py-2 text-white">
+        <span className="min-w-0 truncate text-xs leading-4 text-white/80">
+          {image.file.name}
+        </span>
+        {primary ? (
+          <span className="shrink-0 text-[13px] leading-5 font-medium">대표</span>
+        ) : (
+          <button
+            type="button"
+            onClick={onMakePrimary}
+            className="shrink-0 text-[13px] leading-5 font-medium underline-offset-2 hover:underline"
+          >
+            대표로 지정
+          </button>
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -130,52 +126,55 @@ export default function NewSpacePage() {
   const [roadAddress, setRoadAddress] = useState("");
   const [jibunAddress, setJibunAddress] = useState("");
   const [detailAddress, setDetailAddress] = useState("");
-  const [imageFiles, setImageFiles] = useState<(File | null)[]>([
-    null,
-    null,
-    null,
-  ]);
-  const [imagePreviewUrls, setImagePreviewUrls] = useState<string[]>([
-    "",
-    "",
-    "",
-  ]);
-  const imagePreviewUrlsRef = useRef(imagePreviewUrls);
+  const [images, setImages] = useState<SelectedImage[]>([]);
+  const imagesRef = useRef(images);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
+    imagesRef.current = images;
+  }, [images]);
+
+  useEffect(() => {
     return () => {
-      imagePreviewUrlsRef.current.forEach((previewUrl) => {
-        if (previewUrl) URL.revokeObjectURL(previewUrl);
-      });
+      imagesRef.current.forEach((image) => URL.revokeObjectURL(image.previewUrl));
     };
   }, []);
 
-  const handleImageChange = (index: number, file: File | null) => {
-    setImageFiles((prev) =>
-      prev.map((currentFile, currentIndex) =>
-        currentIndex === index ? file : currentFile,
-      ),
+  const handleAddImages = (fileList: FileList | null) => {
+    const files = Array.from(fileList ?? []);
+    if (!files.length) return;
+
+    const remaining = MAX_SPACE_IMAGES - images.length;
+    const accepted = files.slice(0, Math.max(remaining, 0));
+
+    setError(
+      accepted.length < files.length
+        ? `사진은 최대 ${MAX_SPACE_IMAGES}장까지 등록할 수 있어요.`
+        : null,
     );
-    setImagePreviewUrls((prev) => {
-      const next = [...prev];
-      const currentUrl = next[index];
+    if (!accepted.length) return;
 
-      if (currentUrl) URL.revokeObjectURL(currentUrl);
+    setImages((prev) => [
+      ...prev,
+      ...accepted.map((file) => ({ file, previewUrl: URL.createObjectURL(file) })),
+    ]);
+  };
 
-      next[index] = file ? URL.createObjectURL(file) : "";
-      imagePreviewUrlsRef.current = next;
-
-      return next;
+  const handleRemoveImage = (index: number) => {
+    setImages((prev) => {
+      URL.revokeObjectURL(prev[index].previewUrl);
+      return prev.filter((_, imageIndex) => imageIndex !== index);
     });
+  };
+
+  const handleMakePrimary = (index: number) => {
+    setImages((prev) => [prev[index], ...prev.filter((_, imageIndex) => imageIndex !== index)]);
   };
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    const thumbnailFile = imageFiles[0];
-    const selectedFiles = imageFiles.filter((file): file is File => Boolean(file));
     const parsedPrice = Number(pricePerHour);
     const { sido, sigungu, eupMyeonDong } = parseAddressParts(roadAddress);
 
@@ -194,7 +193,7 @@ export default function NewSpacePage() {
       return;
     }
 
-    if (!thumbnailFile) {
+    if (!images.length) {
       setError("대표 이미지를 등록해주세요.");
       return;
     }
@@ -203,7 +202,7 @@ export default function NewSpacePage() {
     setIsSubmitting(true);
 
     try {
-      const imageUrls = await Promise.all(selectedFiles.map(uploadImage));
+      const imageUrls = await Promise.all(images.map((image) => uploadImage(image.file)));
       await createSpace({
         name,
         description: description.trim() || null,
@@ -360,19 +359,37 @@ export default function NewSpacePage() {
           <div className="flex flex-col gap-2">
             <RequiredLabel>공간 사진</RequiredLabel>
             <p className="text-sm leading-5 text-gray-600">
-              대표 이미지 1장과 추가 이미지를 등록하세요.
+              여러 장을 한 번에 선택할 수 있어요. 첫 번째 사진이 대표 이미지로
+              사용됩니다. ({images.length}/{MAX_SPACE_IMAGES})
             </p>
             <div className="grid grid-cols-3 gap-3">
-              {imageFiles.map((file, index) => (
-                <ImageUploadSlot
-                  key={index}
-                  primary={index === 0}
-                  file={file}
-                  fileName={file?.name}
-                  previewUrl={imagePreviewUrls[index]}
-                  onChange={(file) => handleImageChange(index, file)}
+              {images.map((image, index) => (
+                <ImagePreview
+                  key={image.previewUrl}
+                  image={image}
+                  index={index}
+                  onRemove={() => handleRemoveImage(index)}
+                  onMakePrimary={() => handleMakePrimary(index)}
                 />
               ))}
+              {images.length < MAX_SPACE_IMAGES && (
+                <label className="flex h-[170px] min-w-0 cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-gray-300 bg-gray-50 text-gray-600 transition-colors hover:border-primary-400 hover:bg-primary-50">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    onChange={(event) => {
+                      handleAddImages(event.target.files);
+                      event.target.value = "";
+                    }}
+                    className="sr-only"
+                  />
+                  <span className="text-[26px] leading-none">+</span>
+                  <span className="text-[13px] leading-5 font-medium">
+                    {images.length ? "사진 추가" : "대표 이미지"}
+                  </span>
+                </label>
+              )}
             </div>
           </div>
 

@@ -1,3 +1,5 @@
+import { ExternalLink } from "lucide-react";
+
 interface HostInfo {
   name: string;
   hostingCount: number;
@@ -8,6 +10,9 @@ interface BookingCardProps {
   pricePerHour: number;
   host: HostInfo;
   onBook?: () => void;
+  /** 있으면 외부 예약 공간 — 예약 문의 대신 이 링크로 보낸다. */
+  externalBookingUrl?: string | null;
+  onExternalBookingClick?: () => void;
   onMessage?: () => void;
   isBooking?: boolean;
   isMessaging?: boolean;
@@ -17,6 +22,8 @@ export function BookingCard({
   pricePerHour,
   host,
   onBook,
+  externalBookingUrl,
+  onExternalBookingClick,
   onMessage,
   isBooking = false,
   isMessaging = false,
@@ -50,14 +57,32 @@ export function BookingCard({
       <div className="h-px w-full bg-gray-200" />
       <div className="h-5" />
 
-      <button
-        type="button"
-        onClick={onBook}
-        disabled={isBooking}
-        className="w-full rounded-xl bg-primary-500 py-4 text-base text-white disabled:bg-gray-300"
-      >
-        {isBooking ? "문의 중" : "예약 문의하기"}
-      </button>
+      {externalBookingUrl ? (
+        <>
+          <a
+            href={externalBookingUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={onExternalBookingClick}
+            className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-primary-500 py-4 text-base text-white hover:bg-primary-600"
+          >
+            홈페이지에서 예약하기
+            <ExternalLink size={16} aria-hidden />
+          </a>
+          <p className="mt-2 w-full text-center text-xs text-gray-600">
+            이 공간은 호스트의 홈페이지에서 예약과 결제를 진행해요.
+          </p>
+        </>
+      ) : (
+        <button
+          type="button"
+          onClick={onBook}
+          disabled={isBooking}
+          className="w-full rounded-xl bg-primary-500 py-4 text-base text-white disabled:bg-gray-300"
+        >
+          {isBooking ? "문의 중" : "예약 문의하기"}
+        </button>
+      )}
       <div className="h-3" />
       <button
         type="button"

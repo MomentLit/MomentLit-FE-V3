@@ -24,6 +24,9 @@ export interface SpaceCreateAddress {
   postal_code?: string;
 }
 
+/** INTERNAL: 모먼트릿 예약 요청, EXTERNAL: 호스트의 외부 홈페이지에서 예약 */
+export type BookingType = "INTERNAL" | "EXTERNAL";
+
 export interface SpaceCreateRequest {
   name: string;
   description: string | null;
@@ -33,6 +36,8 @@ export interface SpaceCreateRequest {
   price_per_hour: number;
   category: SpaceCategory;
   phone: string;
+  booking_type?: BookingType;
+  external_booking_url?: string;
 }
 
 export interface SpaceUpdateRequest {
@@ -42,6 +47,9 @@ export interface SpaceUpdateRequest {
   image_urls?: string[];
   price_per_hour?: number;
   category?: SpaceCategory;
+  booking_type?: BookingType;
+  /** 빈 문자열이면 링크 삭제 */
+  external_booking_url?: string;
 }
 
 interface SpaceCreateResponse {
@@ -61,6 +69,8 @@ export interface SpaceDetailDto extends SpaceListDto {
   description: string;
   ai_summary: string;
   image_urls: string[];
+  booking_type?: BookingType;
+  external_booking_url?: string | null;
 }
 
 interface SpaceReviewDto {
@@ -78,6 +88,8 @@ export interface SpaceDetail extends Space {
   description: string;
   aiSummary: string;
   imageUrls: string[];
+  bookingType: BookingType;
+  externalBookingUrl: string | null;
 }
 
 export interface SpaceSearchParams {
@@ -150,6 +162,8 @@ function toSpaceDetail(dto: SpaceDetailDto): SpaceDetail {
     description: dto.description,
     aiSummary: dto.ai_summary,
     imageUrls,
+    bookingType: dto.booking_type ?? "INTERNAL",
+    externalBookingUrl: dto.external_booking_url ?? null,
   };
 }
 
@@ -201,6 +215,11 @@ export async function updateSpace(
   payload: SpaceUpdateRequest,
 ) {
   await apiClient.patch(`/spaces/${spaceId}`, payload);
+}
+
+/** 외부 예약 링크 클릭 기록. 실패해도 이동은 막지 않도록 호출부에서 결과를 기다리지 않는다. */
+export async function recordExternalBookingClick(spaceId: string) {
+  await apiClient.post(`/spaces/${spaceId}/external-booking-clicks`);
 }
 
 export async function deleteSpace(spaceId: string) {

@@ -8,10 +8,14 @@ import {
   SPACE_CATEGORY_LABELS,
   type SpaceCategory,
 } from "@/entities/space-category";
-import { MAX_SPACE_IMAGES } from "@/entities/space";
-import { createSpace } from "@/entities/space/api";
+import { createSpace, type BookingType } from "@/entities/space/api";
 import { uploadImage } from "@/entities/image";
 import { getApiErrorMessage } from "@/shared/api";
+import {
+  BookingTypeField,
+  MAX_SPACE_IMAGES,
+  isValidExternalBookingUrl,
+} from "@/entities/space";
 
 function RequiredLabel({ children }: { children: string }) {
   return (
@@ -126,6 +130,8 @@ export default function NewSpacePage() {
   const [roadAddress, setRoadAddress] = useState("");
   const [jibunAddress, setJibunAddress] = useState("");
   const [detailAddress, setDetailAddress] = useState("");
+  const [bookingType, setBookingType] = useState<BookingType>("INTERNAL");
+  const [externalBookingUrl, setExternalBookingUrl] = useState("");
   const [images, setImages] = useState<SelectedImage[]>([]);
   const imagesRef = useRef(images);
   const [error, setError] = useState<string | null>(null);
@@ -193,6 +199,11 @@ export default function NewSpacePage() {
       return;
     }
 
+    if (bookingType === "EXTERNAL" && !isValidExternalBookingUrl(externalBookingUrl)) {
+      setError("예약 링크는 http:// 또는 https://로 시작하는 주소로 입력해주세요.");
+      return;
+    }
+
     if (!images.length) {
       setError("대표 이미지를 등록해주세요.");
       return;
@@ -220,6 +231,9 @@ export default function NewSpacePage() {
         price_per_hour: parsedPrice,
         category,
         phone,
+        booking_type: bookingType,
+        external_booking_url:
+          bookingType === "EXTERNAL" ? externalBookingUrl.trim() : undefined,
       });
 
       router.push("/mypage/spaces");
@@ -313,6 +327,13 @@ export default function NewSpacePage() {
             value={phone}
             onChange={setPhone}
             placeholder="예) 010-1234-5678"
+          />
+
+          <BookingTypeField
+            bookingType={bookingType}
+            externalBookingUrl={externalBookingUrl}
+            onBookingTypeChange={setBookingType}
+            onExternalBookingUrlChange={setExternalBookingUrl}
           />
 
           <div className="flex flex-col gap-2">

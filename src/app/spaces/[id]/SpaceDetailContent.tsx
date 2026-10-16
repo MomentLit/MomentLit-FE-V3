@@ -22,14 +22,22 @@ import {
   type SpaceCategory,
 } from "@/entities/space-category";
 import { uploadImage } from "@/entities/image";
-import { MAX_SPACE_IMAGES, SpaceCard, useToggleSpaceBookmark } from "@/entities/space";
+import {
+  BookingTypeField,
+  MAX_SPACE_IMAGES,
+  SpaceCard,
+  isValidExternalBookingUrl,
+  useToggleSpaceBookmark,
+} from "@/entities/space";
 import {
   deleteSpace,
   getMySpaces,
   getSpace,
   getSpaceReviews,
   getSpaces,
+  recordExternalBookingClick,
   updateSpace,
+  type BookingType,
   type SpaceDetail,
 } from "@/entities/space/api";
 import { createMatching } from "@/entities/match-request/api";
@@ -45,6 +53,10 @@ interface SpaceEditModalProps {
 
 function SpaceEditModal({ space, onClose, onSaved }: SpaceEditModalProps) {
   const queryClient = useQueryClient();
+  const [bookingType, setBookingType] = useState<BookingType>(space.bookingType);
+  const [externalBookingUrl, setExternalBookingUrl] = useState(
+    space.externalBookingUrl ?? "",
+  );
   const [name, setName] = useState(space.name);
   const [description, setDescription] = useState(space.description);
   const [pricePerHour, setPricePerHour] = useState(String(space.pricePerHour));
@@ -62,6 +74,9 @@ function SpaceEditModal({ space, onClose, onSaved }: SpaceEditModalProps) {
       if (!Number.isInteger(parsedPrice) || parsedPrice < 0) {
         throw new Error("시간당 가격은 0 이상의 정수로 입력해주세요.");
       }
+      if (bookingType === "EXTERNAL" && !isValidExternalBookingUrl(externalBookingUrl)) {
+        throw new Error("예약 링크는 http:// 또는 https://로 시작하는 주소로 입력해주세요.");
+      }
       if (!imageUrls.length) throw new Error("대표 이미지를 한 장 이상 등록해주세요.");
 
       return updateSpace(space.id, {
@@ -71,6 +86,9 @@ function SpaceEditModal({ space, onClose, onSaved }: SpaceEditModalProps) {
         image_urls: imageUrls,
         price_per_hour: parsedPrice,
         category,
+        booking_type: bookingType,
+        external_booking_url:
+          bookingType === "EXTERNAL" ? externalBookingUrl.trim() : undefined,
       });
     },
     onSuccess: async () => {
@@ -174,6 +192,13 @@ function SpaceEditModal({ space, onClose, onSaved }: SpaceEditModalProps) {
               />
             </label>
           </div>
+
+          <BookingTypeField
+            bookingType={bookingType}
+            externalBookingUrl={externalBookingUrl}
+            onBookingTypeChange={setBookingType}
+            onExternalBookingUrlChange={setExternalBookingUrl}
+          />
 
           <div className="flex flex-col gap-2">
             <p className="text-sm font-medium text-gray-900">공간 사진</p>
@@ -396,6 +421,13 @@ export function SpaceDetailContent({ spaceId }: { spaceId: string }) {
           pricePerHour={space.pricePerHour}
           host={{ name: "호스트", hostingCount: 0, responseRate: 0 }}
           onBook={() => setIsReservationModalOpen(true)}
+          externalBookingUrl={
+            space.bookingType === "EXTERNAL" ? space.externalBookingUrl : null
+          }
+          onExternalBookingClick={() => {
+            // 클릭 기록은 이동을 막지 않도록 기다리지 않는다.
+            void recordExternalBookingClick(space.id).catch(() => undefined);
+          }}
           onMessage={handleMessage}
           isBooking={isBooking}
           isMessaging={isMessaging}
